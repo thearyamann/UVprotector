@@ -1,40 +1,44 @@
-import 'package:uv_index_app/services/location_service.dart';
-import 'package:uv_index_app/services/uv_api_service.dart';
-import 'package:uv_index_app/engines/uv_risk_engine.dart';
-import 'package:uv_index_app/models/uv_data.dart';
-import 'package:uv_index_app/engines/sun_exposure_engines.dart';
+import 'location_service.dart';
+import 'uv_api_service.dart';
+import '../engines/uv_risk_engine.dart';
+import '../engines/sun_exposure_engines.dart';
+import '../engines/sunscreen_engines.dart';
+import '../models/uv_data.dart';
 
 class UVController {
+  final LocationService _locationService;
+  final UVApiService _apiService;
 
-  final LocationService locationService = LocationService();
-  final UVApiService apiService = UVApiService();
+  UVController({LocationService? locationService, UVApiService? apiService})
+    : _locationService = locationService ?? LocationService(),
+      _apiService = apiService ?? UVApiService();
 
-  Future<UVData> getCurrentUVData() async {
+  Future<UVData> getCurrentUVData({int skinTypeNumber = 3}) async {
+    final position = await _locationService.getCurrentLocation();
 
-
-    final position = await locationService.getCurrentLocation();
-
-    final uvIndex = await apiService.fetchUVIndex(
+    final uvIndex = await _apiService.fetchUVIndex(
       position.latitude,
       position.longitude,
     );
 
+    // All values computed dynamically from live uvIndex + skinType
     final riskLevel = UVRiskEngine.getRiskLevel(uvIndex);
-
-    // Calculate burn time based on UV index and skin type.
     final burnTime = SunExposureEngine.calculateBurnTime(
       uvIndex: uvIndex,
-      skinType: 3, // example skin type value
+      skinTypeNumber: skinTypeNumber,
     );
+    final advice = SunExposureEngine.getExposureAdvice(burnTime);
+    final spf = SunscreenEngine.getSpfRecommendation(uvIndex);
+    final reapply = SunscreenEngine.getReapplyMinutes(uvIndex);
 
-    final uvData = UVData(
+    return UVData(
       uvIndex: uvIndex,
       riskLevel: riskLevel,
       burnTimeMinutes: burnTime,
+      exposureAdvice: advice,
+      spfRecommendation: spf,
+      reapplyMinutes: reapply,
       timestamp: DateTime.now(),
     );
-    return uvData;
-
   }
-
 }
