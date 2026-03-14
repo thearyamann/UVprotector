@@ -18,6 +18,7 @@ class UVRiskEngine {
     if (uv <= 2) return '#4CAF50'; 
     if (uv <= 5) return '#FFC107'; 
     if (uv <= 7) return '#FF9800'; 
+    if (uv <= 10) return '#F44336';
     return '#9C27B0'; 
   }
 }
