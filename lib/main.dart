@@ -1,76 +1,23 @@
 import 'package:flutter/material.dart';
-import 'services/uv_controller.dart';
+import 'screens/home_screen.dart';
 
 void main() {
-  runApp(const TestApp());
+  runApp(const UVProtectorApp());
 }
 
-class TestApp extends StatelessWidget {
-  const TestApp({super.key});
+class UVProtectorApp extends StatelessWidget {
+  const UVProtectorApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: TestScreen(),
-    );
-  }
-}
-
-class TestScreen extends StatefulWidget {
-  const TestScreen({super.key});
-
-  @override
-  State<TestScreen> createState() => _TestScreenState();
-}
-
-class _TestScreenState extends State<TestScreen> {
-
-  String result = "Loading...";
-
-  @override
-  void initState() {
-    super.initState();
-    testUV();
-  }
-
-  Future<void> testUV() async {
-
-    final controller = UVController();
-
-    try {
-
-      final uvData = await controller.getCurrentUVData();
-
-      setState(() {
-        result =
-            "UV Index: ${uvData.uvIndex}\n"
-            "Risk Level: ${uvData.riskLevel}";
-      });
-
-    } catch (e) {
-
-      setState(() {
-        result = "Error: $e";
-      });
-
-    }
-
-  }
-
-  @override
-  Widget build(BuildContext context) {
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("UV Test"),
+    return MaterialApp(
+      title: 'UV Protector',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+        useMaterial3: true,
       ),
-      body: Center(
-        child: Text(
-          result,
-          textAlign: TextAlign.center,
-        ),
-      ),
+      home: const HomeScreen(),
     );
-
   }
 }
