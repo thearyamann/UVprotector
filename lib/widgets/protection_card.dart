@@ -7,11 +7,16 @@ class ProtectionCard extends StatelessWidget {
 
   const ProtectionCard({super.key, required this.uvData});
 
+  String _extractSpf(String spf) {
+    if (spf == '—') return '—';
+    final match = RegExp(r'SPF\s[\d–]+').firstMatch(spf);
+    return match?.group(0) ?? spf;
+  }
+
   @override
   Widget build(BuildContext context) {
     final spf = uvData?.spfRecommendation ?? '—';
-
-    final spfShort = spf.split(' ').take(2).join(' ');
+    final spfShort = _extractSpf(spf);
 
     return Container(
       padding: const EdgeInsets.all(16),

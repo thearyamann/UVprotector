@@ -13,9 +13,14 @@ import '../widgets/protection_card.dart';
 import '../widgets/advice_card.dart';
 import '../widgets/refresh_button.dart';
 import '../services/location_service.dart';
+import '../services/preferences_service.dart';
+import 'onboarding_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final SkinType? initialSkinType;
+  final int? initialSpf;
+
+  const HomeScreen({super.key, this.initialSkinType, this.initialSpf});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -28,6 +33,16 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   SkinType _selectedSkinType = SkinType.type3;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.initialSkinType != null) {
+      _selectedSkinType = widget.initialSkinType!;
+    }
+    _loadUVData();
+  }
 
   Future<void> _loadUVData() async {
     setState(() {
@@ -99,24 +114,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final verticalGap = screenHeight * 0.012;
+    final bottomPad = screenHeight * 0.025;
+
     return Scaffold(
       backgroundColor: AppTheme.bgPage,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.pageHPad),
+          physics: const ClampingScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: screenWidth * 0.044, // ~16px on 375px screen
+            right: screenWidth * 0.044,
+            bottom: bottomPad,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
-              _buildGreeting(),
-              const SizedBox(height: 16),
+              _buildHeader(screenHeight),
+              _buildGreeting(screenHeight),
+              SizedBox(height: verticalGap * 1.3),
 
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(child: UVIndexCard(uvData: _uvData)),
-                    const SizedBox(width: AppTheme.cardGap),
+                    SizedBox(width: screenWidth * 0.026),
                     Expanded(
                       child: SkinTypeCard(
                         selectedSkinType: _selectedSkinType,
@@ -126,29 +151,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: AppTheme.cardGap),
+              SizedBox(height: verticalGap),
 
               ReapplyCard(uvData: _uvData, onReapplied: () {}),
-              const SizedBox(height: AppTheme.cardGap),
+              SizedBox(height: verticalGap),
 
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(child: BurnTimeCard(uvData: _uvData)),
-                    const SizedBox(width: AppTheme.cardGap),
+                    SizedBox(width: screenWidth * 0.026),
                     Expanded(child: ProtectionCard(uvData: _uvData)),
                   ],
                 ),
               ),
-              const SizedBox(height: AppTheme.cardGap),
+              SizedBox(height: verticalGap),
 
               AdviceCard(uvData: _uvData),
-              const SizedBox(height: AppTheme.cardGap),
+              SizedBox(height: verticalGap),
 
               if (_errorMessage != null)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.only(bottom: screenHeight * 0.01),
                   child: Text(
                     _errorMessage!,
                     style: const TextStyle(color: Colors.red, fontSize: 13),
@@ -156,7 +181,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
               RefreshButton(isLoading: _isLoading, onTap: _loadUVData),
-              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -164,24 +188,53 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(double screenHeight) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: screenHeight * 0.014),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const SunIcon(),
+
+          GestureDetector(
+            onTap: () async {
+              await PreferencesService.resetOnboarding();
+              if (!mounted) return;
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+              );
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: screenHeight * 0.014,
+                vertical: screenHeight * 0.007,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'Reset',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+
           Container(
-            width: 36,
-            height: 36,
+            width: screenHeight * 0.043,
+            height: screenHeight * 0.043,
             decoration: const BoxDecoration(
               color: AppTheme.bgCard,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.notifications_outlined,
-              size: 18,
-              color: Color(0xFF555555),
+              size: screenHeight * 0.022,
+              color: const Color(0xFF555555),
             ),
           ),
         ],
@@ -189,31 +242,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGreeting() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 8, bottom: 4),
-      child: Text.rich(
-        TextSpan(
-          children: [
+  Widget _buildGreeting(double screenHeight) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text.rich(
             TextSpan(
-              text: 'UV Protector\n',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1a2332),
-                height: 1.3,
-              ),
+              children: [
+                TextSpan(
+                  text: 'Hi Aryamann\n',
+                  style: TextStyle(
+                    fontSize: screenHeight * 0.031,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1a2332),
+                    height: 1.3,
+                  ),
+                ),
+                TextSpan(
+                  text: 'Ready for today?',
+                  style: TextStyle(
+                    fontSize: screenHeight * 0.026,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF4a5568),
+                  ),
+                ),
+              ],
             ),
-            TextSpan(
-              text: 'Ready for today?',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF4a5568),
-              ),
-            ),
-          ],
-        ),
+          ),
+          // Location coordinates — shows after data loads
+          // (Temporarily disabled until latitude/longitude are available on UVData)
+        ],
       ),
     );
   }

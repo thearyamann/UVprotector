@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  static const Color bgPage = Color(0xFFE8F0F7); // light blue page
+  static const Color bgPage = Color(0xFFE8F0F7); 
   static const Color bgCard = Colors.white;
 
   static const Color brandBlue = Color(0xFF3B7DD8);

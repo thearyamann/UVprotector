@@ -45,13 +45,16 @@ class UVIndexCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    height: 4,
+          SizedBox(
+            height: 12,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.centerLeft,
+              children: [
+                Positioned.fill(
+                  top: 4,
+                  bottom: 4,
+                  child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(2),
                       gradient: const LinearGradient(
@@ -65,25 +68,22 @@ class UVIndexCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Positioned(
-                    left: (barPos * constraints.maxWidth - 5.5).clamp(
-                      0,
-                      constraints.maxWidth - 11,
-                    ),
-                    top: -4,
-                    child: Container(
-                      width: 11,
-                      height: 11,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: color, width: 2.5),
-                      ),
+                ),
+
+                Align(
+                  alignment: Alignment((barPos * 2 - 1).clamp(-1.0, 0.95), 0),
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: color, width: 2),
                     ),
                   ),
-                ],
-              );
-            },
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           Row(

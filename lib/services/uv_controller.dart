@@ -15,6 +15,7 @@ class UVController {
 
   Future<UVData> getCurrentUVData({int skinTypeNumber = 3}) async {
     final position = await _locationService.getCurrentLocation();
+    print('📍 Fetching UV for: ${position.latitude}, ${position.longitude}');
 
     final uvIndex = await _apiService.fetchUVIndex(
       position.latitude,
