@@ -6,8 +6,14 @@ import '../theme/app_theme.dart';
 class ReapplyCard extends StatefulWidget {
   final UVData? uvData;
   final VoidCallback? onReapplied;
+  final bool isDark;
 
-  const ReapplyCard({super.key, required this.uvData, this.onReapplied});
+  const ReapplyCard({
+    super.key,
+    required this.uvData,
+    required this.isDark,
+    this.onReapplied,
+  });
 
   @override
   State<ReapplyCard> createState() => _ReapplyCardState();
@@ -75,7 +81,7 @@ class _ReapplyCardState extends State<ReapplyCard> {
   }
 
   Color get _progressColor {
-    if (_progress > 0.5) return const Color(0xFF6AAF2E);
+    if (_progress > 0.5) return const Color(0xFF4ADE80);
     if (_progress > 0.25) return const Color(0xFFFFC107);
     return const Color(0xFFE53935);
   }
@@ -93,15 +99,14 @@ class _ReapplyCardState extends State<ReapplyCard> {
     final spf = widget.uvData?.spfRecommendation ?? '—';
     final isExpired = _secondsRemaining <= 0 && widget.uvData != null;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
       width: double.infinity,
-      decoration: AppTheme.cardDecoration,
+      decoration: AppTheme.cardDecoration(widget.isDark),
       padding: EdgeInsets.all(screenWidth * 0.05),
       child: Column(
-        // ← main Column
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Row 1: Header + Status pill ──────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -110,10 +115,13 @@ class _ReapplyCardState extends State<ReapplyCard> {
                   Icon(
                     Icons.access_time_rounded,
                     size: screenHeight * 0.016,
-                    color: const Color(0xFF888888),
+                    color: AppTheme.textLabel(widget.isDark),
                   ),
                   SizedBox(width: screenWidth * 0.012),
-                  Text('REAPPLY TIMER', style: AppTheme.labelSmall),
+                  Text(
+                    'REAPPLY TIMER',
+                    style: AppTheme.labelSmall(widget.isDark),
+                  ),
                 ],
               ),
               Container(
@@ -123,6 +131,10 @@ class _ReapplyCardState extends State<ReapplyCard> {
                 ),
                 decoration: BoxDecoration(
                   color: _progressColor.withOpacity(0.12),
+                  border: Border.all(
+                    color: _progressColor.withOpacity(0.25),
+                    width: 0.5,
+                  ),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -138,7 +150,6 @@ class _ReapplyCardState extends State<ReapplyCard> {
           ),
           SizedBox(height: screenHeight * 0.014),
 
-          // ── Row 2: Countdown + SPF ───────────────────────────
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -149,29 +160,29 @@ class _ReapplyCardState extends State<ReapplyCard> {
                   fontWeight: FontWeight.w700,
                   color: isExpired
                       ? const Color(0xFFE53935)
-                      : const Color(0xFF1a2332),
+                      : AppTheme.textPrimary(widget.isDark),
                   height: 1.1,
                 ),
               ),
               SizedBox(height: screenHeight * 0.004),
-              Text(spf, style: AppTheme.bodySecondary),
+              Text(spf, style: AppTheme.bodySecondary(widget.isDark)),
             ],
           ),
           SizedBox(height: screenHeight * 0.014),
 
-          // ── Progress bar ─────────────────────────────────────
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: widget.uvData != null ? _progress : 0,
-              backgroundColor: const Color(0xFFF0F0F0),
-              valueColor: AlwaysStoppedAnimation<Color>(_progressColor),
+              backgroundColor: AppTheme.progressTrack(widget.isDark),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                _progressColor.withOpacity(widget.isDark ? 0.7 : 1.0),
+              ),
               minHeight: screenHeight * 0.007,
             ),
           ),
           SizedBox(height: screenHeight * 0.006),
 
-          // ── Time labels under bar ────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -179,7 +190,7 @@ class _ReapplyCardState extends State<ReapplyCard> {
                 'Now',
                 style: TextStyle(
                   fontSize: screenHeight * 0.012,
-                  color: const Color(0xFFAAAAAA),
+                  color: AppTheme.textMuted(widget.isDark),
                 ),
               ),
               Text(
@@ -188,24 +199,32 @@ class _ReapplyCardState extends State<ReapplyCard> {
                     : '',
                 style: TextStyle(
                   fontSize: screenHeight * 0.012,
-                  color: const Color(0xFFAAAAAA),
+                  color: AppTheme.textMuted(widget.isDark),
                 ),
               ),
             ],
           ),
           SizedBox(height: screenHeight * 0.018),
 
-          // ── Full width button ────────────────────────────────
           GestureDetector(
             onTap: () {
               setState(() => _secondsRemaining = _totalSeconds);
               widget.onReapplied?.call();
             },
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
               width: double.infinity,
               padding: EdgeInsets.symmetric(vertical: screenHeight * 0.016),
               decoration: BoxDecoration(
-                color: isExpired ? const Color(0xFFE53935) : AppTheme.ctaGreen,
+                color: isExpired
+                    ? const Color(0xFFE53935)
+                    : AppTheme.ctaBg(widget.isDark),
+                border: Border.all(
+                  color: isExpired
+                      ? const Color(0xFFE53935)
+                      : AppTheme.ctaBorder(widget.isDark),
+                  width: 0.5,
+                ),
                 borderRadius: BorderRadius.circular(screenHeight * 0.016),
               ),
               child: Center(
@@ -214,7 +233,9 @@ class _ReapplyCardState extends State<ReapplyCard> {
                   style: TextStyle(
                     fontSize: screenHeight * 0.018,
                     fontWeight: FontWeight.w600,
-                    color: isExpired ? Colors.white : AppTheme.ctaGreenText,
+                    color: isExpired
+                        ? Colors.white
+                        : AppTheme.ctaText(widget.isDark),
                   ),
                 ),
               ),

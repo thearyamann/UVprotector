@@ -4,11 +4,13 @@ import '../theme/app_theme.dart';
 class RefreshButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback? onTap;
+  final bool isDark;
 
   const RefreshButton({
     super.key,
     required this.isLoading,
     required this.onTap,
+    required this.isDark,
   });
 
   @override
@@ -18,14 +20,14 @@ class RefreshButton extends StatelessWidget {
     return GestureDetector(
       onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 400),
         width: double.infinity,
-        // Responsive height — taller on bigger screens
         padding: EdgeInsets.symmetric(vertical: screenHeight * 0.019),
         decoration: BoxDecoration(
           color: isLoading
-              ? AppTheme.ctaGreen.withOpacity(0.5)
-              : AppTheme.ctaGreen,
+              ? AppTheme.ctaBg(isDark).withOpacity(0.5)
+              : AppTheme.ctaBg(isDark),
+          border: Border.all(color: AppTheme.ctaBorder(isDark), width: 0.5),
           borderRadius: BorderRadius.circular(screenHeight * 0.02),
         ),
         child: Center(
@@ -33,8 +35,8 @@ class RefreshButton extends StatelessWidget {
               ? SizedBox(
                   width: screenHeight * 0.024,
                   height: screenHeight * 0.024,
-                  child: const CircularProgressIndicator(
-                    color: AppTheme.ctaGreenText,
+                  child: CircularProgressIndicator(
+                    color: AppTheme.ctaText(isDark),
                     strokeWidth: 2.5,
                   ),
                 )
@@ -43,7 +45,7 @@ class RefreshButton extends StatelessWidget {
                   style: TextStyle(
                     fontSize: screenHeight * 0.019,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.ctaGreenText,
+                    color: AppTheme.ctaText(isDark),
                   ),
                 ),
         ),

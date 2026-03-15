@@ -4,8 +4,9 @@ import '../theme/app_theme.dart';
 
 class BurnTimeCard extends StatelessWidget {
   final UVData? uvData;
+  final bool isDark;
 
-  const BurnTimeCard({super.key, required this.uvData});
+  const BurnTimeCard({super.key, required this.uvData, required this.isDark});
 
   double _progress(double? burnTime) {
     if (burnTime == null || burnTime == double.infinity) return 1.0;
@@ -24,19 +25,20 @@ class BurnTimeCard extends StatelessWidget {
         ? '∞'
         : burn.toStringAsFixed(0);
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
       padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
+      decoration: AppTheme.cardDecoration(isDark),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('BURN TIME', style: AppTheme.labelSmall),
+          Text('BURN TIME', style: AppTheme.labelSmall(isDark)),
           const SizedBox(height: 8),
           RichText(
             text: TextSpan(
               children: [
-                TextSpan(text: display, style: AppTheme.numberMedium),
-                const TextSpan(text: ' min', style: AppTheme.unitText),
+                TextSpan(text: display, style: AppTheme.numberMedium(isDark)),
+                TextSpan(text: ' min', style: AppTheme.unitText(isDark)),
               ],
             ),
           ),
@@ -46,7 +48,7 @@ class BurnTimeCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               color: color,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 10),
@@ -54,8 +56,10 @@ class BurnTimeCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: const Color(0xFFF0F0F0),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+              backgroundColor: AppTheme.progressTrack(isDark),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                color.withOpacity(isDark ? 0.7 : 1.0),
+              ),
               minHeight: 3,
             ),
           ),

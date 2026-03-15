@@ -4,6 +4,7 @@ import '../services/uv_controller.dart';
 import '../models/uv_data.dart';
 import '../models/skin_type.dart';
 import '../theme/app_theme.dart';
+import '../theme/theme_controller.dart';
 import '../widgets/sun_icon.dart';
 import '../widgets/uv_index_card.dart';
 import '../widgets/skin_type_card.dart';
@@ -37,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-
     if (widget.initialSkinType != null) {
       _selectedSkinType = widget.initialSkinType!;
     }
@@ -56,7 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _uvData = data);
     } on LocationException catch (e) {
       setState(() => _errorMessage = e.message);
-
       if (e.type == LocationErrorType.permissionPermanentlyDenied) {
         _showOpenSettingsDialog();
       }
@@ -114,23 +113,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ThemeController.of(context).isDark;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final verticalGap = screenHeight * 0.012;
     final bottomPad = screenHeight * 0.025;
 
-    return Container(
-      decoration: const BoxDecoration(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFFEEDD),
-            Color(0xFFE8F0F7),
-            Color(0xFFDDEEFF),
-            Color(0xFFD4EED8),
-          ],
-          stops: [0.0, 0.35, 0.65, 1.0],
+          colors: isDark ? AppTheme.darkGradient : AppTheme.lightGradient,
+          stops: const [0.0, 0.35, 0.65, 1.0],
         ),
       ),
       child: Scaffold(
@@ -146,40 +142,61 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(screenHeight),
-                _buildGreeting(screenHeight),
+                _buildHeader(screenHeight, isDark),
+                _buildGreeting(screenHeight, isDark),
                 SizedBox(height: verticalGap * 1.3),
+
+                // UV Index + Skin Type
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: UVIndexCard(uvData: _uvData)),
+                      Expanded(
+                        child: UVIndexCard(uvData: _uvData, isDark: isDark),
+                      ),
                       SizedBox(width: screenWidth * 0.026),
                       Expanded(
                         child: SkinTypeCard(
                           selectedSkinType: _selectedSkinType,
                           onTap: _cycleSkinType,
+                          isDark: isDark,
                         ),
                       ),
                     ],
                   ),
                 ),
                 SizedBox(height: verticalGap),
-                ReapplyCard(uvData: _uvData, onReapplied: () {}),
+
+                // Reapply timer
+                ReapplyCard(
+                  uvData: _uvData,
+                  onReapplied: () {},
+                  isDark: isDark,
+                ),
                 SizedBox(height: verticalGap),
+
+                // Burn time + Protection
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: BurnTimeCard(uvData: _uvData)),
+                      Expanded(
+                        child: BurnTimeCard(uvData: _uvData, isDark: isDark),
+                      ),
                       SizedBox(width: screenWidth * 0.026),
-                      Expanded(child: ProtectionCard(uvData: _uvData)),
+                      Expanded(
+                        child: ProtectionCard(uvData: _uvData, isDark: isDark),
+                      ),
                     ],
                   ),
                 ),
                 SizedBox(height: verticalGap),
-                AdviceCard(uvData: _uvData),
+
+                // Advice
+                AdviceCard(uvData: _uvData, isDark: isDark),
                 SizedBox(height: verticalGap),
+
+                // Error
                 if (_errorMessage != null)
                   Padding(
                     padding: EdgeInsets.only(bottom: screenHeight * 0.01),
@@ -188,7 +205,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: const TextStyle(color: Colors.red, fontSize: 13),
                     ),
                   ),
-                RefreshButton(isLoading: _isLoading, onTap: _loadUVData),
+
+                // Refresh
+                RefreshButton(
+                  isLoading: _isLoading,
+                  onTap: _loadUVData,
+                  isDark: isDark,
+                ),
               ],
             ),
           ),
@@ -197,14 +220,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(double screenHeight) {
+  Widget _buildHeader(double screenHeight, bool isDark) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: screenHeight * 0.014),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Sun icon — tapping toggles dark/light mode
           const SunIcon(),
 
+          // Temporary reset button — remove before release
           GestureDetector(
             onTap: () async {
               await PreferencesService.resetOnboarding();
@@ -233,17 +258,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          Container(
+          // Notification bell
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
             width: screenHeight * 0.043,
             height: screenHeight * 0.043,
-            decoration: const BoxDecoration(
-              color: AppTheme.bgCard,
+            decoration: BoxDecoration(
+              color: AppTheme.cardBg(isDark),
+              border: Border.all(
+                color: AppTheme.cardBorder(isDark),
+                width: 0.5,
+              ),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.notifications_outlined,
               size: screenHeight * 0.022,
-              color: const Color(0xFF555555),
+              color: AppTheme.textSecondary(isDark),
             ),
           ),
         ],
@@ -251,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGreeting(double screenHeight) {
+  Widget _buildGreeting(double screenHeight, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(left: 8, bottom: 4),
       child: Column(
@@ -265,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontSize: screenHeight * 0.031,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1a2332),
+                    color: AppTheme.textPrimary(isDark),
                     height: 1.3,
                   ),
                 ),
@@ -274,14 +305,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontSize: screenHeight * 0.026,
                     fontWeight: FontWeight.w400,
-                    color: const Color(0xFF4a5568),
+                    color: AppTheme.textSecondary(isDark),
                   ),
                 ),
               ],
             ),
           ),
-          // Location coordinates — shows after data loads
-          // (Temporarily disabled until latitude/longitude are available on UVData)
+          if (_uvData?.latitude != null) ...[
+            SizedBox(height: screenHeight * 0.007),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: screenHeight * 0.016,
+                  color: AppTheme.textMuted(isDark),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${_uvData!.latitude!.toStringAsFixed(4)}, '
+                  '${_uvData!.longitude!.toStringAsFixed(4)}',
+                  style: TextStyle(
+                    fontSize: screenHeight * 0.014,
+                    color: AppTheme.textMuted(isDark),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -5,24 +5,34 @@ import 'models/user_preferences.dart';
 import 'models/skin_type.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
+import 'theme/theme_controller.dart';
 
 void main() async {
-  // Required before any async work in main
   WidgetsFlutterBinding.ensureInitialized();
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
 
-  // Check if user has completed onboarding
   final onboardingDone = await PreferencesService.isOnboardingDone();
   final prefs = await PreferencesService.loadPreferences();
+  final isDark =
+      await PreferencesService.loadIsDarkMode(); // ← load saved theme
 
-  runApp(UVProtectorApp(
-    showOnboarding: !onboardingDone,
-    savedPreferences: prefs,
-  ));
+  final themeController = ThemeController(isDark: isDark);
+
+  runApp(
+    ThemeControllerProvider(
+      controller: themeController,
+      child: UVProtectorApp(
+        showOnboarding: !onboardingDone,
+        savedPreferences: prefs,
+      ),
+    ),
+  );
 }
 
 class UVProtectorApp extends StatelessWidget {
@@ -37,20 +47,26 @@ class UVProtectorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'UV Protector',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3B7DD8)),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFE8F0F7),
+    final isDark = ThemeController.of(context).isDark;
+
+    return AnimatedTheme(
+      duration: const Duration(milliseconds: 400),
+      data: isDark ? ThemeData.dark() : ThemeData.light(),
+      child: MaterialApp(
+        title: 'UV Protector',
+        debugShowCheckedModeBanner: false,
+        themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+        theme: ThemeData.light(),
+        darkTheme: ThemeData.dark(),
+        home: showOnboarding
+            ? const OnboardingScreen()
+            : HomeScreen(
+                initialSkinType: SkinType.fromType(
+                  savedPreferences.skinTypeNumber,
+                ),
+                initialSpf: savedPreferences.spf,
+              ),
       ),
-      home: showOnboarding
-          ? const OnboardingScreen()
-          : HomeScreen(
-              initialSkinType: SkinType.fromType(savedPreferences.skinTypeNumber),
-              initialSpf: savedPreferences.spf,
-            ),
     );
   }
 }

@@ -4,8 +4,9 @@ import '../theme/app_theme.dart';
 
 class UVIndexCard extends StatelessWidget {
   final UVData? uvData;
+  final bool isDark;
 
-  const UVIndexCard({super.key, required this.uvData});
+  const UVIndexCard({super.key, required this.uvData, required this.isDark});
 
   double _barPosition(double uvIndex) => (uvIndex / 11).clamp(0.0, 1.0);
 
@@ -16,41 +17,53 @@ class UVIndexCard extends StatelessWidget {
     final color = AppTheme.riskColor(risk);
     final barPos = uv != null ? _barPosition(uv) : 0.0;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
       padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
+      decoration: AppTheme.cardDecoration(isDark),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header ───────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('UV INDEX', style: AppTheme.labelSmall),
-              const Icon(Icons.north_east, size: 12, color: Color(0xFFBBBBBB)),
+              Text('UV INDEX', style: AppTheme.labelSmall(isDark)),
+              Icon(
+                Icons.north_east,
+                size: 12,
+                color: AppTheme.textMuted(isDark),
+              ),
             ],
           ),
           const SizedBox(height: 8),
+
+          // ── UV number ────────────────────────────────────
           Text(
             uv != null ? uv.toStringAsFixed(0) : '--',
-            style: AppTheme.numberLarge,
+            style: AppTheme.numberLarge(isDark),
           ),
           const SizedBox(height: 4),
+
+          // ── Risk label ───────────────────────────────────
           Text(
             risk ?? '—',
             style: TextStyle(
               fontSize: 13,
               color: color,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 10),
 
+          // ── Gradient bar with dot ─────────────────────────
           SizedBox(
             height: 12,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.centerLeft,
               children: [
+                // Gradient bar
                 Positioned.fill(
                   top: 4,
                   bottom: 4,
@@ -69,14 +82,16 @@ class UVIndexCard extends StatelessWidget {
                     ),
                   ),
                 ),
-
+                // Indicator dot
                 Align(
                   alignment: Alignment((barPos * 2 - 1).clamp(-1.0, 0.95), 0),
                   child: Container(
                     width: 9,
                     height: 9,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      // Dark mode: dark fill so dot is visible on gradient
+                      // Light mode: white fill
+                      color: isDark ? const Color(0xFF1a2a3a) : Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(color: color, width: 2),
                     ),
@@ -86,18 +101,23 @@ class UVIndexCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
+
+          // ── Peak time ────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               Text(
                 'Peak:',
-                style: TextStyle(fontSize: 10, color: Color(0xFFAAAAAA)),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppTheme.textMuted(isDark),
+                ),
               ),
               Text(
                 '12:00–15:00',
                 style: TextStyle(
                   fontSize: 10,
-                  color: Color(0xFF666666),
+                  color: AppTheme.textSecondary(isDark),
                   fontWeight: FontWeight.w500,
                 ),
               ),
