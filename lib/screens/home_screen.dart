@@ -119,69 +119,78 @@ class _HomeScreenState extends State<HomeScreen> {
     final verticalGap = screenHeight * 0.012;
     final bottomPad = screenHeight * 0.025;
 
-    return Scaffold(
-      backgroundColor: AppTheme.bgPage,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          padding: EdgeInsets.only(
-            left: screenWidth * 0.044, // ~16px on 375px screen
-            right: screenWidth * 0.044,
-            bottom: bottomPad,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(screenHeight),
-              _buildGreeting(screenHeight),
-              SizedBox(height: verticalGap * 1.3),
-
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: UVIndexCard(uvData: _uvData)),
-                    SizedBox(width: screenWidth * 0.026),
-                    Expanded(
-                      child: SkinTypeCard(
-                        selectedSkinType: _selectedSkinType,
-                        onTap: _cycleSkinType,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFFEEDD),
+            Color(0xFFE8F0F7),
+            Color(0xFFDDEEFF),
+            Color(0xFFD4EED8),
+          ],
+          stops: [0.0, 0.35, 0.65, 1.0],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: EdgeInsets.only(
+              left: screenWidth * 0.044,
+              right: screenWidth * 0.044,
+              bottom: bottomPad,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(screenHeight),
+                _buildGreeting(screenHeight),
+                SizedBox(height: verticalGap * 1.3),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: UVIndexCard(uvData: _uvData)),
+                      SizedBox(width: screenWidth * 0.026),
+                      Expanded(
+                        child: SkinTypeCard(
+                          selectedSkinType: _selectedSkinType,
+                          onTap: _cycleSkinType,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: verticalGap),
-
-              ReapplyCard(uvData: _uvData, onReapplied: () {}),
-              SizedBox(height: verticalGap),
-
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: BurnTimeCard(uvData: _uvData)),
-                    SizedBox(width: screenWidth * 0.026),
-                    Expanded(child: ProtectionCard(uvData: _uvData)),
-                  ],
-                ),
-              ),
-              SizedBox(height: verticalGap),
-
-              AdviceCard(uvData: _uvData),
-              SizedBox(height: verticalGap),
-
-              if (_errorMessage != null)
-                Padding(
-                  padding: EdgeInsets.only(bottom: screenHeight * 0.01),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ],
                   ),
                 ),
-
-              RefreshButton(isLoading: _isLoading, onTap: _loadUVData),
-            ],
+                SizedBox(height: verticalGap),
+                ReapplyCard(uvData: _uvData, onReapplied: () {}),
+                SizedBox(height: verticalGap),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: BurnTimeCard(uvData: _uvData)),
+                      SizedBox(width: screenWidth * 0.026),
+                      Expanded(child: ProtectionCard(uvData: _uvData)),
+                    ],
+                  ),
+                ),
+                SizedBox(height: verticalGap),
+                AdviceCard(uvData: _uvData),
+                SizedBox(height: verticalGap),
+                if (_errorMessage != null)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: screenHeight * 0.01),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  ),
+                RefreshButton(isLoading: _isLoading, onTap: _loadUVData),
+              ],
+            ),
           ),
         ),
       ),
