@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/uv_controller.dart';
+import '../services/weather_service.dart';
+import '../services/geocoding_service.dart';
+import '../services/uv_cache_service.dart';
 import '../models/uv_data.dart';
+import '../models/weather_data.dart';
 import '../models/skin_type.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/sun_icon.dart';
 import '../widgets/uv_index_card.dart';
-import '../widgets/skin_type_card.dart';
-import '../widgets/reapply_card.dart';
+import '../widgets/weather_card.dart';
+import '../widgets/sunscreen_timer_card.dart';
 import '../widgets/burn_time_card.dart';
 import '../widgets/protection_card.dart';
 import '../widgets/advice_card.dart';
-import '../widgets/refresh_button.dart';
 import '../services/location_service.dart';
 import '../services/preferences_service.dart';
 import 'onboarding_screen.dart';
@@ -27,43 +30,91 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  final UVController _controller = UVController();
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  final UVController _uvController = UVController();
 
-  UVData? _uvData;
-  bool _isLoading = false;
-  String? _errorMessage;
-  SkinType _selectedSkinType = SkinType.type3;
+  UVData?      _uvData;
+  WeatherData? _weatherData;
+  bool         _isLoading   = false;
+  String?      _errorMessage;
+  SkinType     _selectedSkinType = SkinType.type3;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (widget.initialSkinType != null) {
       _selectedSkinType = widget.initialSkinType!;
     }
-    _loadUVData();
+    _loadData();
   }
 
-  Future<void> _loadUVData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadDataIfStale();
+    }
+  }
+
+  Future<void> _loadDataIfStale() async {
+    final shouldRefresh = await UVCacheService.shouldRefresh();
+    if (shouldRefresh) _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() { _isLoading = true; _errorMessage = null; });
+
     try {
-      final data = await _controller.getCurrentUVData(
+      final cached = await UVCacheService.loadCachedUVData();
+      if (cached != null && !await UVCacheService.shouldRefresh()) {
+        setState(() => _uvData = cached);
+        _isLoading = false;
+        _fetchWeather(cached.latitude, cached.longitude);
+        return;
+      }
+
+      final uvData = await _uvController.getCurrentUVData(
         skinTypeNumber: _selectedSkinType.type,
       );
-      setState(() => _uvData = data);
+
+      await UVCacheService.saveUVData(uvData);
+      setState(() => _uvData = uvData);
+
+      _fetchWeather(uvData.latitude, uvData.longitude);
+
     } on LocationException catch (e) {
       setState(() => _errorMessage = e.message);
       if (e.type == LocationErrorType.permissionPermanentlyDenied) {
         _showOpenSettingsDialog();
       }
+      final cached = await UVCacheService.loadCachedUVData();
+      if (cached != null) setState(() => _uvData = cached);
     } catch (e) {
       setState(() => _errorMessage = e.toString());
+      final cached = await UVCacheService.loadCachedUVData();
+      if (cached != null) setState(() => _uvData = cached);
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _fetchWeather(double? lat, double? lng) async {
+    if (lat == null || lng == null) return;
+    try {
+      final city    = await GeocodingService.getCityName(lat, lng);
+      final weather = await WeatherService.fetchWeather(
+        latitude:  lat,
+        longitude: lng,
+        cityName:  city,
+      );
+      if (mounted) setState(() => _weatherData = weather);
+    } catch (_) {}
   }
 
   void _showOpenSettingsDialog() {
@@ -71,10 +122,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Location Permission',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-        ),
+        title: const Text('Location Permission',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
         content: const Text(
           'Location access is permanently denied.\n\nGo to Settings → UV Protector → Location → Allow.',
           style: TextStyle(fontSize: 14, color: Color(0xFF555555), height: 1.5),
@@ -82,21 +131,15 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: Color(0xFF888888))),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF888888))),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
               await Geolocator.openAppSettings();
             },
-            child: const Text(
-              'Open Settings',
-              style: TextStyle(
-                color: Color(0xFF3B7DD8),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: const Text('Open Settings',
+                style: TextStyle(color: Color(0xFF3B7DD8), fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -115,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final screenWidth  = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final verticalGap  = screenHeight * 0.012;
-    final bottomPad    = screenHeight * 0.025;
+    final bottomPad    = screenHeight * 0.04;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
@@ -130,81 +173,73 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: EdgeInsets.only(
-              left: screenWidth * 0.044,
-              right: screenWidth * 0.044,
-              bottom: bottomPad,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(screenHeight, isDark),
-                _buildGreeting(screenHeight, isDark),
-                SizedBox(height: verticalGap * 1.3),
+          child: RefreshIndicator(
+            onRefresh: _loadData,
+            color: AppTheme.brandBlue(isDark),
+            backgroundColor: isDark ? const Color(0xFF1a2332) : Colors.white,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.only(
+                left:   screenWidth * 0.044,
+                right:  screenWidth * 0.044,
+                bottom: bottomPad,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(screenHeight, isDark),
+                  _buildGreeting(screenHeight, isDark),
+                  SizedBox(height: verticalGap * 1.3),
 
-                // UV Index + Skin Type
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: UVIndexCard(uvData: _uvData, isDark: isDark)),
-                      SizedBox(width: screenWidth * 0.026),
-                      Expanded(
-                        child: SkinTypeCard(
-                          selectedSkinType: _selectedSkinType,
-                          onTap: _cycleSkinType,
-                          isDark: isDark,
+                  if (_isLoading && _uvData == null)
+                    SizedBox(
+                      height: screenHeight * 0.3,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.brandBlue(isDark),
+                          strokeWidth: 2,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: verticalGap),
-
-                // Reapply timer
-                ReapplyCard(
-                  uvData: _uvData,
-                  onReapplied: () {},
-                  isDark: isDark,
-                ),
-                SizedBox(height: verticalGap),
-
-                // Burn time + Protection
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: BurnTimeCard(uvData: _uvData, isDark: isDark)),
-                      SizedBox(width: screenWidth * 0.026),
-                      Expanded(child: ProtectionCard(uvData: _uvData, isDark: isDark)),
-                    ],
-                  ),
-                ),
-                SizedBox(height: verticalGap),
-
-                // Advice
-                AdviceCard(uvData: _uvData, isDark: isDark),
-                SizedBox(height: verticalGap),
-
-                // Error
-                if (_errorMessage != null)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: screenHeight * 0.01),
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    )
+                  else ...[
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: UVIndexCard(uvData: _uvData, isDark: isDark)),
+                          SizedBox(width: screenWidth * 0.026),
+                          Expanded(child: WeatherCard(weatherData: _weatherData, isDark: isDark)),
+                        ],
+                      ),
                     ),
-                  ),
+                    SizedBox(height: verticalGap),
 
-                // Refresh
-                RefreshButton(
-                  isLoading: _isLoading,
-                  onTap: _loadUVData,
-                  isDark: isDark,
-                ),
-              ],
+                    SunscreenTimerCard(uvData: _uvData, isDark: isDark),
+                    SizedBox(height: verticalGap),
+
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: BurnTimeCard(uvData: _uvData, isDark: isDark)),
+                          SizedBox(width: screenWidth * 0.026),
+                          Expanded(child: ProtectionCard(uvData: _uvData, isDark: isDark)),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: verticalGap),
+
+                    AdviceCard(uvData: _uvData, isDark: isDark),
+
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: verticalGap),
+                        child: Text(_errorMessage!,
+                            style: const TextStyle(color: Colors.red, fontSize: 12)),
+                      ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
@@ -218,10 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Sun icon — tapping toggles dark/light mode
           const SunIcon(),
-
-          // Temporary reset button — remove before release
           GestureDetector(
             onTap: () async {
               await PreferencesService.resetOnboarding();
@@ -233,41 +265,27 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: screenHeight * 0.014,
-                vertical: screenHeight * 0.007,
+                vertical:   screenHeight * 0.007,
               ),
               decoration: BoxDecoration(
                 color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
-                'Reset',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: const Text('Reset',
+                  style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600)),
             ),
           ),
-
-          // Notification bell
           AnimatedContainer(
             duration: const Duration(milliseconds: 400),
-            width: screenHeight * 0.043,
+            width:  screenHeight * 0.043,
             height: screenHeight * 0.043,
             decoration: BoxDecoration(
-              color: AppTheme.cardBg(isDark),
-              border: Border.all(
-                color: AppTheme.cardBorder(isDark),
-                width: 0.5,
-              ),
-              shape: BoxShape.circle,
+              color:  AppTheme.cardBg(isDark),
+              border: Border.all(color: AppTheme.cardBorder(isDark), width: 0.5),
+              shape:  BoxShape.circle,
             ),
-            child: Icon(
-              Icons.notifications_outlined,
-              size: screenHeight * 0.022,
-              color: AppTheme.textSecondary(isDark),
-            ),
+            child: Icon(Icons.notifications_outlined,
+                size: screenHeight * 0.022, color: AppTheme.textSecondary(isDark)),
           ),
         ],
       ),
@@ -277,54 +295,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildGreeting(double screenHeight, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(left: 8, bottom: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text.rich(
+      child: Text.rich(
+        TextSpan(
+          children: [
             TextSpan(
-              children: [
-                TextSpan(
-                  text: 'Hi Aryamann\n',
-                  style: TextStyle(
-                    fontSize: screenHeight * 0.031,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary(isDark),
-                    height: 1.3,
-                  ),
-                ),
-                TextSpan(
-                  text: 'Ready for today?',
-                  style: TextStyle(
-                    fontSize: screenHeight * 0.026,
-                    fontWeight: FontWeight.w400,
-                    color: AppTheme.textSecondary(isDark),
-                  ),
-                ),
-              ],
+              text: 'Hi Aryamann\n',
+              style: TextStyle(
+                fontSize:   screenHeight * 0.028,
+                fontWeight: FontWeight.w600,
+                color:      AppTheme.textPrimary(isDark),
+                height:     1.3,
+              ),
             ),
-          ),
-          if (_uvData?.latitude != null) ...[
-            SizedBox(height: screenHeight * 0.007),
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: screenHeight * 0.016,
-                  color: AppTheme.textMuted(isDark),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${_uvData!.latitude!.toStringAsFixed(4)}, '
-                  '${_uvData!.longitude!.toStringAsFixed(4)}',
-                  style: TextStyle(
-                    fontSize: screenHeight * 0.014,
-                    color: AppTheme.textMuted(isDark),
-                  ),
-                ),
-              ],
+            TextSpan(
+              text: 'Ready for today?',
+              style: TextStyle(
+                fontSize:   screenHeight * 0.022,
+                fontWeight: FontWeight.w400,
+                color:      AppTheme.textSecondary(isDark),
+              ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }

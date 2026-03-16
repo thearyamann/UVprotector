@@ -22,7 +22,7 @@ class UVController {
       position.longitude,
     );
 
-    // All values computed dynamically from live uvIndex + skinType
+   
     final riskLevel = UVRiskEngine.getRiskLevel(uvIndex);
     final burnTime = SunExposureEngine.calculateBurnTime(
       uvIndex: uvIndex,
