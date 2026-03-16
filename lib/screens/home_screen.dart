@@ -82,10 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Color(0xFF888888)),
-            ),
+            child: const Text('Cancel',
+                style: TextStyle(color: Color(0xFF888888))),
           ),
           TextButton(
             onPressed: () async {
@@ -106,18 +104,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _cycleSkinType() {
-    final idx = SkinType.all.indexOf(_selectedSkinType);
+    final idx  = SkinType.all.indexOf(_selectedSkinType);
     final next = (idx + 1) % SkinType.all.length;
     setState(() => _selectedSkinType = SkinType.all[next]);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ThemeController.of(context).isDark;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final isDark       = ThemeController.of(context).isDark;
+    final screenWidth  = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final verticalGap = screenHeight * 0.012;
-    final bottomPad = screenHeight * 0.025;
+    final verticalGap  = screenHeight * 0.012;
+    final bottomPad    = screenHeight * 0.025;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
@@ -151,9 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: UVIndexCard(uvData: _uvData, isDark: isDark),
-                      ),
+                      Expanded(child: UVIndexCard(uvData: _uvData, isDark: isDark)),
                       SizedBox(width: screenWidth * 0.026),
                       Expanded(
                         child: SkinTypeCard(
@@ -180,13 +176,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: BurnTimeCard(uvData: _uvData, isDark: isDark),
-                      ),
+                      Expanded(child: BurnTimeCard(uvData: _uvData, isDark: isDark)),
                       SizedBox(width: screenWidth * 0.026),
-                      Expanded(
-                        child: ProtectionCard(uvData: _uvData, isDark: isDark),
-                      ),
+                      Expanded(child: ProtectionCard(uvData: _uvData, isDark: isDark)),
                     ],
                   ),
                 ),
@@ -244,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 vertical: screenHeight * 0.007,
               ),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Text(

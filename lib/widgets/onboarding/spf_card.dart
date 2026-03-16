@@ -76,13 +76,13 @@ class SpfCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withOpacity(0.85)
-              : Colors.white.withOpacity(0.55),
+            ? Colors.white.withValues(alpha: 0.85)
+            : Colors.white.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF3B7DD8)
-                : Colors.white.withOpacity(0.85),
+              : Colors.white.withValues(alpha: 0.85),
             width: isSelected ? 2 : 0.5,
           ),
         ),

@@ -24,8 +24,8 @@ class AdviceCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: color.withOpacity(isDark ? 0.15 : 0.1),
-              border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+              color: color.withValues(alpha: isDark ? 0.15 : 0.1),
+              border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.wb_sunny_outlined, size: 18, color: color),

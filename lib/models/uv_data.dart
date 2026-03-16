@@ -6,6 +6,8 @@ class UVData {
   final String spfRecommendation;
   final int reapplyMinutes;
   final DateTime timestamp;
+  final double? latitude;    
+  final double? longitude;   
 
   UVData({
     required this.uvIndex,
@@ -15,6 +17,8 @@ class UVData {
     required this.spfRecommendation,
     required this.reapplyMinutes,
     required this.timestamp,
+    this.latitude,           
+    this.longitude,
   });
 
   @override

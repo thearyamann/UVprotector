@@ -25,7 +25,7 @@ class RefreshButton extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: screenHeight * 0.019),
         decoration: BoxDecoration(
           color: isLoading
-              ? AppTheme.ctaBg(isDark).withOpacity(0.5)
+              ? AppTheme.ctaBg(isDark).withValues(alpha: 0.5)
               : AppTheme.ctaBg(isDark),
           border: Border.all(color: AppTheme.ctaBorder(isDark), width: 0.5),
           borderRadius: BorderRadius.circular(screenHeight * 0.02),

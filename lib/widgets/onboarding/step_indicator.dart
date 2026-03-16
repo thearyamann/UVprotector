@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_theme.dart';
-
 
 class StepIndicator extends StatelessWidget {
   final int totalSteps;
@@ -11,6 +9,9 @@ class StepIndicator extends StatelessWidget {
     required this.totalSteps,
     required this.currentStep,
   });
+
+  static const Color _activeColor = Color(0xFF3B7DD8);
+  static const Color _inactiveColor = Color(0x403B7DD8);
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +26,7 @@ class StepIndicator extends StatelessWidget {
           height: 4,
           width: isActive ? 24 : 8,
           decoration: BoxDecoration(
-            color: isActive
-                ? AppTheme.brandBlue
-                : AppTheme.brandBlue.withOpacity(0.25),
+            color: isActive ? _activeColor : _inactiveColor,
             borderRadius: BorderRadius.circular(2),
           ),
         );

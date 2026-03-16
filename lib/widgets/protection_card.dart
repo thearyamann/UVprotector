@@ -43,9 +43,9 @@ class ProtectionCard extends StatelessWidget {
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: blue.withOpacity(0.1),
-              border: Border.all(color: blue.withOpacity(0.2), width: 0.5),
+        decoration: BoxDecoration(
+          color: blue.withValues(alpha: 0.1),
+          border: Border.all(color: blue.withValues(alpha: 0.2), width: 0.5),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

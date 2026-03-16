@@ -19,8 +19,7 @@ void main() async {
 
   final onboardingDone = await PreferencesService.isOnboardingDone();
   final prefs = await PreferencesService.loadPreferences();
-  final isDark =
-      await PreferencesService.loadIsDarkMode(); // ← load saved theme
+  final isDark = await PreferencesService.loadIsDarkMode();
 
   final themeController = ThemeController(isDark: isDark);
 
@@ -49,24 +48,20 @@ class UVProtectorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = ThemeController.of(context).isDark;
 
-    return AnimatedTheme(
-      duration: const Duration(milliseconds: 400),
-      data: isDark ? ThemeData.dark() : ThemeData.light(),
-      child: MaterialApp(
-        title: 'UV Protector',
-        debugShowCheckedModeBanner: false,
-        themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-        theme: ThemeData.light(),
-        darkTheme: ThemeData.dark(),
-        home: showOnboarding
-            ? const OnboardingScreen()
-            : HomeScreen(
-                initialSkinType: SkinType.fromType(
-                  savedPreferences.skinTypeNumber,
-                ),
-                initialSpf: savedPreferences.spf,
+    return MaterialApp(
+      title: 'UV Protector',
+      debugShowCheckedModeBanner: false,
+      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+      theme: ThemeData.light(useMaterial3: true),
+      darkTheme: ThemeData.dark(useMaterial3: true),
+      home: showOnboarding
+          ? const OnboardingScreen()
+          : HomeScreen(
+              initialSkinType: SkinType.fromType(
+                savedPreferences.skinTypeNumber,
               ),
-      ),
+              initialSpf: savedPreferences.spf,
+            ),
     );
   }
 }

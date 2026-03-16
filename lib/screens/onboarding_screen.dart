@@ -88,7 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         children: [
                           ...previousChildren,
 
-                          if (currentChild != null) currentChild,
+                          ?currentChild,
                         ],
                       ),
                       child: _currentStep == 0 ? _buildStep1() : _buildStep2(),
@@ -122,12 +122,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           height: 52,
           decoration: BoxDecoration(
             color: isStep1
-                ? const Color(0xFF3B7DD8).withOpacity(0.12)
-                : const Color(0xFF6AAF2E).withOpacity(0.12),
+                ? const Color(0xFF3B7DD8).withValues(alpha: 0.12)
+                : const Color(0xFF6AAF2E).withValues(alpha: 0.12),
             border: Border.all(
               color: isStep1
-                  ? const Color(0xFF3B7DD8).withOpacity(0.2)
-                  : const Color(0xFF6AAF2E).withOpacity(0.2),
+                  ? const Color(0xFF3B7DD8).withValues(alpha: 0.2)
+                  : const Color(0xFF6AAF2E).withValues(alpha: 0.2),
             ),
             borderRadius: BorderRadius.circular(18),
           ),

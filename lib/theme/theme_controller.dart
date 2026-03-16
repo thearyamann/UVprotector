@@ -14,7 +14,6 @@ class ThemeController extends ChangeNotifier {
     await PreferencesService.saveTheme(_isDark);
   }
 
-  // Helper — access from any widget
   static ThemeController of(BuildContext context) {
     return context
         .dependOnInheritedWidgetOfExactType<_ThemeControllerScope>()!

@@ -58,7 +58,7 @@ class BurnTimeCard extends StatelessWidget {
               value: progress,
               backgroundColor: AppTheme.progressTrack(isDark),
               valueColor: AlwaysStoppedAnimation<Color>(
-                color.withOpacity(isDark ? 0.7 : 1.0),
+              color.withValues(alpha: isDark ? 0.7 : 1.0),
               ),
               minHeight: 3,
             ),

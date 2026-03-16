@@ -40,6 +40,9 @@ class UVController {
       spfRecommendation: spf,
       reapplyMinutes: reapply,
       timestamp: DateTime.now(),
+      latitude: position.latitude,    
+      longitude: position.longitude,  
+
     );
   }
 }

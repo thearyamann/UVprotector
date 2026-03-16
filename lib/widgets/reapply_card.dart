@@ -81,9 +81,9 @@ class _ReapplyCardState extends State<ReapplyCard> {
   }
 
   Color get _progressColor {
-    if (_progress > 0.5) return const Color(0xFF4ADE80);
-    if (_progress > 0.25) return const Color(0xFFFFC107);
-    return const Color(0xFFE53935);
+    if (_progress > 0.5) return const Color(0xFF16A34A);
+    if (_progress > 0.25) return const Color(0xFFD97706);
+    return const Color(0xFFEF4444);
   }
 
   String get _progressLabel {
@@ -130,9 +130,9 @@ class _ReapplyCardState extends State<ReapplyCard> {
                   vertical: screenHeight * 0.004,
                 ),
                 decoration: BoxDecoration(
-                  color: _progressColor.withOpacity(0.12),
+                  color: _progressColor.withValues(alpha: 0.12),
                   border: Border.all(
-                    color: _progressColor.withOpacity(0.25),
+                    color: _progressColor.withValues(alpha: 0.25),
                     width: 0.5,
                   ),
                   borderRadius: BorderRadius.circular(20),
@@ -176,9 +176,9 @@ class _ReapplyCardState extends State<ReapplyCard> {
               value: widget.uvData != null ? _progress : 0,
               backgroundColor: AppTheme.progressTrack(widget.isDark),
               valueColor: AlwaysStoppedAnimation<Color>(
-                _progressColor.withOpacity(widget.isDark ? 0.7 : 1.0),
+                _progressColor.withValues(alpha: widget.isDark ? 0.7 : 1.0),
               ),
-              minHeight: screenHeight * 0.007,
+              minHeight: screenHeight * 0.005,
             ),
           ),
           SizedBox(height: screenHeight * 0.006),
