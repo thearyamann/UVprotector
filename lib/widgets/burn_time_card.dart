@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/uv_data.dart';
 import '../theme/app_theme.dart';
-import 'pressable.dart';
 
 class BurnTimeCard extends StatelessWidget {
   final UVData? uvData;
@@ -34,48 +33,45 @@ class BurnTimeCard extends StatelessWidget {
         ? const Color(0xFF16A34A)
         : color;
 
-    return Pressable(
-      scaleDown: 0.97,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        padding: const EdgeInsets.all(14),
-        decoration: AppTheme.cardDecoration(isDark),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('BURN TIME', style: AppTheme.labelSmall(isDark)),
-            const SizedBox(height: 8),
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: mainText,
-                    style: TextStyle(
-                      fontSize: isUnlimited ? 26 : 28,
-                      fontWeight: FontWeight.w300,
-                      color: AppTheme.textPrimary(isDark),
-                      height: 1,
-                    ),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      padding: const EdgeInsets.all(14),
+      decoration: AppTheme.cardDecoration(isDark),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('BURN TIME', style: AppTheme.labelSmall(isDark)),
+          const SizedBox(height: 8),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: mainText,
+                  style: TextStyle(
+                    fontSize: isUnlimited ? 26 : 28,
+                    fontWeight: FontWeight.w300,
+                    color: AppTheme.textPrimary(isDark),
+                    height: 1,
                   ),
-                  if (subText.isNotEmpty)
-                    TextSpan(
-                      text: subText,
-                      style: AppTheme.unitText(isDark),
-                    ),
-                ],
-              ),
+                ),
+                if (subText.isNotEmpty)
+                  TextSpan(
+                    text: subText,
+                    style: AppTheme.unitText(isDark),
+                  ),
+              ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              riskText,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: riskColor,
-              ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            riskText,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: riskColor,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -4,6 +4,7 @@ import '../engines/uv_risk_engine.dart';
 import '../engines/sun_exposure_engines.dart';
 import '../engines/sunscreen_engines.dart';
 import '../models/uv_data.dart';
+import '../services/preferences_service.dart';
 
 class UVController {
   final LocationService _locationService;
@@ -22,7 +23,6 @@ class UVController {
       position.longitude,
     );
 
-   
     final riskLevel = UVRiskEngine.getRiskLevel(uvIndex);
     final burnTime = SunExposureEngine.calculateBurnTime(
       uvIndex: uvIndex,
@@ -30,7 +30,8 @@ class UVController {
     );
     final advice = SunExposureEngine.getExposureAdvice(burnTime);
     final spf = SunscreenEngine.getSpfRecommendation(uvIndex);
-    final reapply = SunscreenEngine.getReapplyMinutes(uvIndex);
+    final prefs = await PreferencesService.loadPreferences();
+    final reapply = SunscreenEngine.getReapplyMinutes(uvIndex, prefs.spf);
 
     return UVData(
       uvIndex: uvIndex,
@@ -40,9 +41,8 @@ class UVController {
       spfRecommendation: spf,
       reapplyMinutes: reapply,
       timestamp: DateTime.now(),
-      latitude: position.latitude,    
-      longitude: position.longitude,  
-
+      latitude: position.latitude,
+      longitude: position.longitude,
     );
   }
 }

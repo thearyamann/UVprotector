@@ -1,6 +1,31 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
+class SkeletonBox extends StatelessWidget {
+  final double width;
+  final double height;
+  final double radius;
+  final bool isDark;
+
+  const SkeletonBox({
+    super.key,
+    required this.width,
+    required this.height,
+    required this.isDark,
+    this.radius = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ShimmerBox(
+      width: width,
+      height: height,
+      radius: radius,
+      isDark: isDark,
+    );
+  }
+}
+
 class _ShimmerBox extends StatefulWidget {
   final double width;
   final double height;

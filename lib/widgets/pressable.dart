@@ -9,7 +9,7 @@ class Pressable extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
-    this.scaleDown = 0.96,
+    this.scaleDown = 0.91,
   });
 
   @override
@@ -20,17 +20,21 @@ class _PressableState extends State<Pressable>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scale;
+  late Animation<double> _opacity;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 90),
-      reverseDuration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 80),
+      reverseDuration: const Duration(milliseconds: 200),
     );
     _scale = Tween<double>(begin: 1.0, end: widget.scaleDown).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeIn),
+    );
+    _opacity = Tween<double>(begin: 1.0, end: 0.75).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeIn),
     );
   }
 
@@ -46,7 +50,14 @@ class _PressableState extends State<Pressable>
       onTapDown:   (_) => _ctrl.forward(),
       onTapUp:     (_) { _ctrl.reverse(); widget.onTap?.call(); },
       onTapCancel: ()  => _ctrl.reverse(),
-      child: ScaleTransition(scale: _scale, child: widget.child),
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (_, child) => Transform.scale(
+          scale: _scale.value,
+          child: Opacity(opacity: _opacity.value, child: child),
+        ),
+        child: widget.child,
+      ),
     );
   }
 }

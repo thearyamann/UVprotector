@@ -1,7 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/weather_data.dart';
 import '../theme/app_theme.dart';
-import 'pressable.dart';
+import '../widgets/skeleton_loader.dart';
 
 class WeatherCard extends StatelessWidget {
   final WeatherData? weatherData;
@@ -33,78 +34,104 @@ class WeatherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final temp      = weatherData?.temperature.round().toString() ?? '--';
-    final high      = weatherData?.high.round().toString() ?? '--';
-    final low       = weatherData?.low.round().toString() ?? '--';
-    final condition = weatherData?.condition ?? '—';
-    final city      = weatherData?.cityName ?? '—';
-    final color     = weatherData != null
-        ? _color(condition)
-        : AppTheme.textMuted(isDark);
+    final sh = MediaQuery.of(context).size.height;
 
-    return Pressable(
-      scaleDown: 0.97,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        padding: const EdgeInsets.all(14),
-        decoration: AppTheme.cardDecoration(isDark),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          padding: const EdgeInsets.all(14),
+          decoration: AppTheme.cardDecoration(isDark),
+          child: weatherData == null
+              ? _buildSkeleton(sh)
+              : _buildContent(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeleton(double sh) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SkeletonBox(width: 70, height: 10, radius: 5, isDark: isDark),
+        const SizedBox(height: 10),
+        SkeletonBox(width: 70, height: 10, radius: 5, isDark: isDark),
+        const SizedBox(height: 8),
+       SkeletonBox(width: 70, height: 10, radius: 5, isDark: isDark),
+        const Spacer(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Icon(Icons.location_on_outlined, size: 10, color: AppTheme.textMuted(isDark)),
-                const SizedBox(width: 3),
-                Expanded(
-                  child: Text(
-                    city.toUpperCase(),
-                    style: AppTheme.labelSmall(isDark),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '$temp°',
-              style: TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w300,
-                color: AppTheme.textPrimary(isDark),
-                height: 1,
+            SkeletonBox(width: 30, height: 9, radius: 3, isDark: isDark),
+            SkeletonBox(width: 30, height: 9, radius: 3, isDark: isDark),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent() {
+    final temp      = weatherData!.temperature.round().toString();
+    final high      = weatherData!.high.round().toString();
+    final low       = weatherData!.low.round().toString();
+    final condition = weatherData!.condition;
+    final city      = weatherData!.cityName;
+    final color     = _color(condition);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.location_on_outlined, size: 10, color: AppTheme.textMuted(isDark)),
+            const SizedBox(width: 3),
+            Expanded(
+              child: Text(
+                city.toUpperCase(),
+                style: AppTheme.labelSmall(isDark),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(_icon(condition), size: 12, color: color),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    condition,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: color,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('H $high°', style: TextStyle(fontSize: 9, color: AppTheme.textMuted(isDark))),
-                Text('L $low°',  style: TextStyle(fontSize: 9, color: AppTheme.textMuted(isDark))),
-              ],
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 6),
+        Text(
+          '$temp°',
+          style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w300,
+            color: AppTheme.textPrimary(isDark),
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(_icon(condition), size: 12, color: color),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                condition,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('H $high°', style: TextStyle(fontSize: 9, color: AppTheme.textMuted(isDark))),
+            Text('L $low°',  style: TextStyle(fontSize: 9, color: AppTheme.textMuted(isDark))),
+          ],
+        ),
+      ],
     );
   }
 }
