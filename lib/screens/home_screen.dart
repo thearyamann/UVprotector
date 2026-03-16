@@ -35,9 +35,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   UVData?      _uvData;
   WeatherData? _weatherData;
-  bool         _isLoading   = false;
+  bool         _isLoading    = false;
   String?      _errorMessage;
   SkinType     _selectedSkinType = SkinType.type3;
+  late ThemeController _themeController;
 
   @override
   void initState() {
@@ -50,7 +51,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _themeController = ThemeController.of(context);
+    _themeController.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _themeController.removeListener(_onThemeChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -85,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       await UVCacheService.saveUVData(uvData);
       setState(() => _uvData = uvData);
-
       _fetchWeather(uvData.latitude, uvData.longitude);
 
     } on LocationException catch (e) {
@@ -154,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final isDark       = ThemeController.of(context).isDark;
+    final isDark       = _themeController.isDark;
     final screenWidth  = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final verticalGap  = screenHeight * 0.012;

@@ -8,26 +8,27 @@ class WeatherCard extends StatelessWidget {
 
   const WeatherCard({super.key, required this.weatherData, required this.isDark});
 
-  String _conditionIcon(String condition) {
-    final c = condition.toLowerCase();
-    if (c.contains('clear') || c.contains('sunny')) return '☀️';
-    if (c.contains('partly'))                        return '⛅';
-    if (c.contains('cloud'))                         return '☁️';
-    if (c.contains('rain') || c.contains('shower'))  return '🌧️';
-    if (c.contains('snow'))                          return '❄️';
-    if (c.contains('storm'))                         return '⛈️';
-    if (c.contains('fog'))                           return '🌫️';
-    return '🌤️';
-  }
+IconData _conditionIcon(String condition) {
+  final c = condition.toLowerCase();
+  if (c.contains('clear') || c.contains('sunny')) return Icons.wb_sunny_rounded;
+  if (c.contains('partly'))                        return Icons.wb_cloudy_outlined;
+  if (c.contains('cloud'))                         return Icons.cloud_rounded;
+  if (c.contains('rain') || c.contains('shower'))  return Icons.grain_rounded;
+  if (c.contains('snow'))                          return Icons.ac_unit_rounded;
+  if (c.contains('storm'))                         return Icons.thunderstorm_rounded;
+  if (c.contains('fog'))                           return Icons.blur_on_rounded;
+  return Icons.wb_sunny_outlined;
+}
 
-  Color _conditionColor(String condition) {
-    final c = condition.toLowerCase();
-    if (c.contains('clear') || c.contains('sunny')) return const Color(0xFFFF9800);
-    if (c.contains('partly'))                        return const Color(0xFFFFB74D);
-    if (c.contains('rain') || c.contains('shower'))  return const Color(0xFF42A5F5);
-    if (c.contains('storm'))                         return const Color(0xFF7E57C2);
-    return const Color(0xFF78909C);
-  }
+Color _conditionColor(String condition) {
+  final c = condition.toLowerCase();
+  if (c.contains('clear') || c.contains('sunny')) return const Color(0xFFFF9800);
+  if (c.contains('partly'))                        return const Color(0xFFFFB74D);
+  if (c.contains('rain') || c.contains('shower'))  return const Color(0xFF42A5F5);
+  if (c.contains('storm'))                         return const Color(0xFF7E57C2);
+  if (c.contains('snow'))                          return const Color(0xFF90CAF9);
+  return const Color(0xFF78909C);
+}
 
   @override
   Widget build(BuildContext context) {
@@ -70,23 +71,24 @@ class WeatherCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          Row(
-            children: [
-              Text(
-                _conditionIcon(condition),
-                style: const TextStyle(fontSize: 11),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                condition,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
+    Row(
+  children: [
+    Icon(
+      _conditionIcon(condition),
+      size: 13,
+      color: color,
+    ),
+    const SizedBox(width: 4),
+    Text(
+      condition,
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        color: color,
+      ),
+    ),
+  ],
+),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
