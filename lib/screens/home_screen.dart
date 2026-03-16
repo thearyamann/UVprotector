@@ -16,6 +16,8 @@ import '../widgets/sunscreen_timer_card.dart';
 import '../widgets/burn_time_card.dart';
 import '../widgets/protection_card.dart';
 import '../widgets/advice_card.dart';
+import '../widgets/skeleton_loader.dart';
+import '../widgets/pressable.dart';
 import '../services/location_service.dart';
 import '../services/preferences_service.dart';
 import 'onboarding_screen.dart';
@@ -70,14 +72,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _loadDataIfStale();
-    }
+    if (state == AppLifecycleState.resumed) _loadDataIfStale();
   }
 
   Future<void> _loadDataIfStale() async {
-    final shouldRefresh = await UVCacheService.shouldRefresh();
-    if (shouldRefresh) _loadData();
+    if (await UVCacheService.shouldRefresh()) _loadData();
   }
 
   Future<void> _loadData() async {
@@ -86,8 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final cached = await UVCacheService.loadCachedUVData();
       if (cached != null && !await UVCacheService.shouldRefresh()) {
-        setState(() => _uvData = cached);
-        _isLoading = false;
+        if (mounted) setState(() { _uvData = cached; _isLoading = false; });
         _fetchWeather(cached.latitude, cached.longitude);
         return;
       }
@@ -95,24 +93,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final uvData = await _uvController.getCurrentUVData(
         skinTypeNumber: _selectedSkinType.type,
       );
-
       await UVCacheService.saveUVData(uvData);
-      setState(() => _uvData = uvData);
+      if (mounted) setState(() => _uvData = uvData);
       _fetchWeather(uvData.latitude, uvData.longitude);
 
     } on LocationException catch (e) {
-      setState(() => _errorMessage = e.message);
+      if (mounted) setState(() => _errorMessage = e.message);
       if (e.type == LocationErrorType.permissionPermanentlyDenied) {
-        _showOpenSettingsDialog();
+        _showSettingsDialog();
       }
       final cached = await UVCacheService.loadCachedUVData();
-      if (cached != null) setState(() => _uvData = cached);
+      if (cached != null && mounted) setState(() => _uvData = cached);
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
+      if (mounted) setState(() => _errorMessage = e.toString());
       final cached = await UVCacheService.loadCachedUVData();
-      if (cached != null) setState(() => _uvData = cached);
+      if (cached != null && mounted) setState(() => _uvData = cached);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -121,15 +118,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final city    = await GeocodingService.getCityName(lat, lng);
       final weather = await WeatherService.fetchWeather(
-        latitude:  lat,
-        longitude: lng,
-        cityName:  city,
+        latitude: lat, longitude: lng, cityName: city,
       );
       if (mounted) setState(() => _weatherData = weather);
     } catch (_) {}
   }
 
-  void _showOpenSettingsDialog() {
+  void _showSettingsDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -143,7 +138,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF888888))),
+            child: const Text('Cancel',
+                style: TextStyle(color: Color(0xFF888888))),
           ),
           TextButton(
             onPressed: () async {
@@ -151,17 +147,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               await Geolocator.openAppSettings();
             },
             child: const Text('Open Settings',
-                style: TextStyle(color: Color(0xFF3B7DD8), fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    color: Color(0xFF3B7DD8),
+                    fontWeight: FontWeight.w600)),
           ),
         ],
       ),
     );
-  }
-
-  void _cycleSkinType() {
-    final idx  = SkinType.all.indexOf(_selectedSkinType);
-    final next = (idx + 1) % SkinType.all.length;
-    setState(() => _selectedSkinType = SkinType.all[next]);
   }
 
   @override
@@ -188,7 +180,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: RefreshIndicator(
             onRefresh: _loadData,
             color: AppTheme.brandBlue(isDark),
-            backgroundColor: isDark ? const Color(0xFF1a2332) : Colors.white,
+            backgroundColor:
+                isDark ? const Color(0xFF1a2332) : Colors.white,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.only(
@@ -201,19 +194,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 children: [
                   _buildHeader(screenHeight, isDark),
                   _buildGreeting(screenHeight, isDark),
-                  SizedBox(height: verticalGap * 1.3),
 
                   if (_isLoading && _uvData == null)
-                    SizedBox(
-                      height: screenHeight * 0.3,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppTheme.brandBlue(isDark),
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    )
+                    SkeletonHomeScreen(isDark: isDark)
                   else ...[
+                    SizedBox(height: verticalGap * 1.3),
+
                     IntrinsicHeight(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -247,7 +233,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Padding(
                         padding: EdgeInsets.only(top: verticalGap),
                         child: Text(_errorMessage!,
-                            style: const TextStyle(color: Colors.red, fontSize: 12)),
+                            style: const TextStyle(
+                                color: Colors.red, fontSize: 12)),
                       ),
                   ],
                 ],
@@ -266,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const SunIcon(),
-          GestureDetector(
+          Pressable(
             onTap: () async {
               await PreferencesService.resetOnboarding();
               if (!mounted) return;
@@ -284,20 +271,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Text('Reset',
-                  style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
             ),
           ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            width:  screenHeight * 0.043,
-            height: screenHeight * 0.043,
-            decoration: BoxDecoration(
-              color:  AppTheme.cardBg(isDark),
-              border: Border.all(color: AppTheme.cardBorder(isDark), width: 0.5),
-              shape:  BoxShape.circle,
+          Pressable(
+            scaleDown: 0.88,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              width:  screenHeight * 0.043,
+              height: screenHeight * 0.043,
+              decoration: BoxDecoration(
+                color:  AppTheme.cardBg(isDark),
+                border: Border.all(
+                    color: AppTheme.cardBorder(isDark), width: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.notifications_outlined,
+                  size: screenHeight * 0.022,
+                  color: AppTheme.textSecondary(isDark)),
             ),
-            child: Icon(Icons.notifications_outlined,
-                size: screenHeight * 0.022, color: AppTheme.textSecondary(isDark)),
           ),
         ],
       ),
@@ -313,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             TextSpan(
               text: 'Hi Aryamann\n',
               style: TextStyle(
-                fontSize:   screenHeight * 0.028,
+                fontSize:   screenHeight * 0.027,
                 fontWeight: FontWeight.w600,
                 color:      AppTheme.textPrimary(isDark),
                 height:     1.3,
@@ -322,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             TextSpan(
               text: 'Ready for today?',
               style: TextStyle(
-                fontSize:   screenHeight * 0.022,
+                fontSize:   screenHeight * 0.021,
                 fontWeight: FontWeight.w400,
                 color:      AppTheme.textSecondary(isDark),
               ),

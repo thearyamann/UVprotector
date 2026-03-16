@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/theme_controller.dart';
 import '../theme/app_theme.dart';
+import 'pressable.dart';
 
 class SunIcon extends StatelessWidget {
   const SunIcon({super.key});
@@ -8,10 +9,11 @@ class SunIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = ThemeController.of(context);
-    final isDark = controller.isDark;
+    final isDark     = controller.isDark;
 
-    return GestureDetector(
+    return Pressable(
       onTap: () => controller.toggle(),
+      scaleDown: 0.85,
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 400),
         transitionBuilder: (child, animation) => ScaleTransition(
@@ -22,7 +24,7 @@ class SunIcon extends StatelessWidget {
           isDark ? Icons.wb_sunny : Icons.wb_sunny_outlined,
           key: ValueKey(isDark),
           color: AppTheme.brandBlue(isDark),
-          size: 28,
+          size: 26,
         ),
       ),
     );
