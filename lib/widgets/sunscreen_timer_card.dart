@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/uv_data.dart';
 import '../services/uv_cache_service.dart';
@@ -10,7 +11,6 @@ import 'pressable.dart';
 class SunscreenTimerCard extends StatefulWidget {
   final UVData? uvData;
   final bool isDark;
-
   const SunscreenTimerCard({
     super.key,
     required this.uvData,
@@ -24,17 +24,16 @@ class SunscreenTimerCard extends StatefulWidget {
 class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   Timer? _ticker;
 
-
-  int  _sessionsCompleted = 0;
-  int  _totalSessions     = 0;
-  int  _secondsLeft       = 0;
-  int  _totalSeconds      = 0;
-  int  _reapplyMinutes    = 90;
-  int  _spf               = 30;
-  int  _skinType          = 3;
+  int _sessionsCompleted = 0;
+  int _totalSessions = 0;
+  int _secondsLeft = 0;
+  int _totalSeconds = 0;
+  int _reapplyMinutes = 90;
+  int _spf = 30;
+  int _skinType = 3;
   DateTime? _sessionStartedAt;
-
   bool _loaded = false;
+  bool _isLoading = false; // button loading state
 
   @override
   void initState() {
@@ -45,55 +44,52 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   @override
   void didUpdateWidget(SunscreenTimerCard old) {
     super.didUpdateWidget(old);
-    if (widget.uvData != old.uvData && widget.uvData != null) {
-      _recalculate();
-    }
+    if (widget.uvData != old.uvData && widget.uvData != null) _recalculate();
   }
 
   Future<void> _init() async {
     final prefs = await PreferencesService.loadPreferences();
     _skinType = prefs.skinTypeNumber;
-    _spf      = prefs.spf;
+    _spf = prefs.spf;
     await _loadSession();
     if (mounted) setState(() => _loaded = true);
   }
 
   Future<void> _loadSession() async {
     final session = await UVCacheService.loadSessionData();
-    final uv      = widget.uvData?.uvIndex ?? 0;
-    final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
+    final uv = widget.uvData?.uvIndex ?? 0;
+    final total = SunscreenEngine.getTotalApplications(_skinType, uv);
     final reapply = SunscreenEngine.getReapplyMinutes(uv, _spf);
 
     if (session == null) {
       _sessionsCompleted = 0;
-      _totalSessions     = total;
-      _reapplyMinutes    = reapply;
-      _totalSeconds      = 0;
-      _secondsLeft       = 0;
-      _sessionStartedAt  = null;
+      _totalSessions = total;
+      _reapplyMinutes = reapply;
+      _totalSeconds = 0;
+      _secondsLeft = 0;
+      _sessionStartedAt = null;
       return;
     }
 
     _sessionsCompleted = session['sessionsCompleted'] as int;
-    _totalSessions     = session['totalSessions'] as int;
-    _reapplyMinutes    = session['reapplyMinutes'] as int;
-    _spf               = session['spf'] as int;
+    _totalSessions = session['totalSessions'] as int;
+    _reapplyMinutes = session['reapplyMinutes'] as int;
+    _spf = session['spf'] as int;
 
     final startedAt = DateTime.fromMillisecondsSinceEpoch(
-        session['sessionStartedAt'] as int);
+      session['sessionStartedAt'] as int,
+    );
     final expiresAt = startedAt.add(Duration(minutes: _reapplyMinutes));
-    final now       = DateTime.now();
-
     _sessionStartedAt = startedAt;
-    _totalSeconds     = _reapplyMinutes * 60;
+    _totalSeconds = _reapplyMinutes * 60;
 
     if (_sessionsCompleted >= _totalSessions) {
       _secondsLeft = 0;
       return;
     }
 
-    if (now.isBefore(expiresAt)) {
-      _secondsLeft = expiresAt.difference(now).inSeconds;
+    if (DateTime.now().isBefore(expiresAt)) {
+      _secondsLeft = expiresAt.difference(DateTime.now()).inSeconds;
       _startTicker();
     } else {
       _secondsLeft = 0;
@@ -101,13 +97,11 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   }
 
   void _recalculate() {
-    final uv      = widget.uvData?.uvIndex ?? 0;
-    final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
-    final reapply = SunscreenEngine.getReapplyMinutes(uv, _spf);
+    final uv = widget.uvData?.uvIndex ?? 0;
     setState(() {
-      _totalSessions  = total;
-      _reapplyMinutes = reapply;
-      _totalSeconds   = reapply * 60;
+      _totalSessions = SunscreenEngine.getTotalApplications(_skinType, uv);
+      _reapplyMinutes = SunscreenEngine.getReapplyMinutes(uv, _spf);
+      _totalSeconds = _reapplyMinutes * 60;
     });
   }
 
@@ -117,7 +111,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       if (!mounted) return;
       if (_secondsLeft <= 0) {
         _ticker?.cancel();
-        setState(() => _secondsLeft = 0);
+        setState(() {});
         return;
       }
       setState(() => _secondsLeft--);
@@ -125,28 +119,32 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   }
 
   Future<void> _onApplied() async {
-    final uv      = widget.uvData?.uvIndex ?? 0;
-    final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    final uv = widget.uvData?.uvIndex ?? 0;
+    final total = SunscreenEngine.getTotalApplications(_skinType, uv);
     final reapply = SunscreenEngine.getReapplyMinutes(uv, _spf);
-    final newCompleted = _sessionsCompleted + 1;
+    final newDone = _sessionsCompleted + 1;
 
     await UVCacheService.saveSession(
-      sessionsCompleted: newCompleted,
-      totalSessions:     total,
-      reapplyMinutes:    reapply,
-      spf:               _spf,
+      sessionsCompleted: newDone,
+      totalSessions: total,
+      reapplyMinutes: reapply,
+      spf: _spf,
     );
 
+    if (!mounted) return;
     setState(() {
-      _sessionsCompleted = newCompleted;
-      _totalSessions     = total;
-      _reapplyMinutes    = reapply;
-      _totalSeconds      = reapply * 60;
-      _secondsLeft       = reapply * 60;
-      _sessionStartedAt  = DateTime.now();
+      _sessionsCompleted = newDone;
+      _totalSessions = total;
+      _reapplyMinutes = reapply;
+      _totalSeconds = reapply * 60;
+      _secondsLeft = reapply * 60;
+      _sessionStartedAt = DateTime.now();
+      _isLoading = false;
     });
-
-    if (newCompleted < total) _startTicker();
+    if (newDone < total) _startTicker();
   }
 
   @override
@@ -171,210 +169,237 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   }
 
   String _fmt(DateTime dt) {
-    final h  = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final m  = dt.minute.toString().padLeft(2, '0');
-    final ap = dt.hour < 12 ? 'AM' : 'PM';
-    return '$h:$m $ap';
+    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m ${dt.hour < 12 ? "AM" : "PM"}';
   }
 
   String get _appliedDisplay =>
       _sessionStartedAt != null ? _fmt(_sessionStartedAt!) : '';
-
   String get _expiresDisplay {
     if (_sessionStartedAt == null) return '';
     return _fmt(_sessionStartedAt!.add(Duration(minutes: _reapplyMinutes)));
   }
 
   Color get _progressColor {
-    if (_progress > 0.5)  return const Color(0xFF15803D);
+    if (_progress > 0.5) return const Color(0xFF16A34A);
     if (_progress > 0.25) return const Color(0xFFD97706);
     return const Color(0xFFDC2626);
   }
 
-  BoxDecoration get _greenBtn => BoxDecoration(
-    color: AppTheme.ctaBg(widget.isDark),
-    border: Border.all(color: AppTheme.ctaBorder(widget.isDark), width: 0.5),
-    borderRadius: BorderRadius.circular(13),
-  );
+  Widget _blackBtn({
+    required String label,
+    required VoidCallback onTap,
+    bool isRed = false,
+    bool isLoading = false,
+  }) {
+    return Pressable(
+      onTap: isLoading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          color: isRed ? const Color(0xFFDC2626) : const Color(0xD9141414),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: isLoading
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.8,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Applying...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                )
+              : Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final sw  = MediaQuery.of(context).size.width;
-    final sh  = MediaQuery.of(context).size.height;
-    final uv  = widget.uvData?.uvIndex ?? -1;
+    final sw = MediaQuery.of(context).size.width;
+    final sh = MediaQuery.of(context).size.height;
+    final uv = widget.uvData?.uvIndex ?? -1;
     final isLowUV = uv >= 0 && uv <= 2;
     final allDone = _sessionsCompleted >= _totalSessions && _totalSessions > 0;
-    final notStarted  = _sessionsCompleted == 0 && _secondsLeft == 0;
-    final isExpired   = _secondsLeft <= 0 && _sessionsCompleted < _totalSessions && _sessionsCompleted > 0;
-    final isRunning   = _secondsLeft > 0 && _sessionsCompleted < _totalSessions;
-    final firstApply  = notStarted && !isLowUV && _totalSessions > 0;
+    final notStarted = _sessionsCompleted == 0 && _secondsLeft == 0;
+    final isExpired =
+        _secondsLeft <= 0 &&
+        _sessionsCompleted < _totalSessions &&
+        _sessionsCompleted > 0;
+    final isRunning = _secondsLeft > 0;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      width: double.infinity,
-      decoration: AppTheme.cardDecoration(widget.isDark),
-      padding: EdgeInsets.all(sw * 0.044),
-      child: !_loaded
-          ? _buildLoading(sh)
-          : isLowUV
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(sw * 0.043),
+          decoration: AppTheme.cardDecoration(widget.isDark),
+          child: !_loaded
+              ? _buildLoading(sh)
+              : isLowUV
               ? _buildLowUV(sw, sh)
               : allDone
-                  ? _buildAllDone(sw, sh)
-                  : isRunning
-                      ? _buildRunning(sw, sh)
-                      : isExpired
-                          ? _buildExpired(sw, sh)
-                          : firstApply
-                              ? _buildNotApplied(sw, sh)
-                              : _buildNotApplied(sw, sh),
+              ? _buildAllDone(sw, sh)
+              : isRunning
+              ? _buildRunning(sw, sh)
+              : isExpired
+              ? _buildExpired(sw, sh)
+              : _buildNotApplied(sw, sh),
+        ),
+      ),
     );
   }
 
-  Widget _buildLoading(double sh) {
-    return Row(
-      children: [
-        SizedBox(
-          width: sh * 0.02,
-          height: sh * 0.02,
-          child: CircularProgressIndicator(
-            strokeWidth: 1.5,
-            color: AppTheme.textMuted(widget.isDark),
-          ),
+  Widget _buildLoading(double sh) => Row(
+    children: [
+      SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(
+          strokeWidth: 1.5,
+          color: AppTheme.textMuted(widget.isDark),
         ),
-        SizedBox(width: 10),
-        Text('Loading...', style: AppTheme.bodySecondary(widget.isDark)),
-      ],
-    );
-  }
+      ),
+      const SizedBox(width: 9),
+      Text('Loading...', style: AppTheme.bodySecondary(widget.isDark)),
+    ],
+  );
 
-  Widget _buildHeader(double sw, double sh, {Widget? trailing}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.access_time_rounded,
-                size: sh * 0.015,
-                color: AppTheme.textLabel(widget.isDark)),
-            SizedBox(width: sw * 0.012),
-            Text('SUNSCREEN TIMER',
-                style: AppTheme.labelSmall(widget.isDark)),
-          ],
-        ),
-        if (trailing != null) trailing,
-      ],
-    );
-  }
+  Widget _header({Widget? trailing}) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Row(
+        children: [
+          Icon(
+            Icons.access_time_rounded,
+            size: 9,
+            color: AppTheme.textLabel(widget.isDark),
+          ),
+          const SizedBox(width: 5),
+          Text('SUNSCREEN TIMER', style: AppTheme.labelSmall(widget.isDark)),
+        ],
+      ),
+      if (trailing != null) trailing,
+    ],
+  );
 
-  Widget _buildLowUV(double sw, double sh) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(sw, sh),
-        SizedBox(height: sh * 0.012),
-        Text(
-          'UV is low right now',
-          style: TextStyle(
-            fontSize: sh * 0.019,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimary(widget.isDark),
-          ),
+  Widget _buildLowUV(double sw, double sh) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _header(),
+      SizedBox(height: sh * 0.011),
+      Text(
+        'UV is low right now',
+        style: TextStyle(
+          fontSize: sh * 0.018,
+          fontWeight: FontWeight.w500,
+          color: AppTheme.textPrimary(widget.isDark),
         ),
-        SizedBox(height: sh * 0.004),
-        Text('No cream needed at the moment',
-            style: AppTheme.bodySecondary(widget.isDark)),
-        SizedBox(height: sh * 0.003),
-        Text(
-          'Check again when you head outside',
-          style: TextStyle(
-            fontSize: sh * 0.013,
-            color: AppTheme.textMuted(widget.isDark),
-          ),
+      ),
+      SizedBox(height: sh * 0.003),
+      Text(
+        'No cream needed at the moment',
+        style: AppTheme.bodySecondary(widget.isDark),
+      ),
+      SizedBox(height: sh * 0.002),
+      Text(
+        'Check again when you head outside',
+        style: TextStyle(
+          fontSize: sh * 0.013,
+          color: AppTheme.textMuted(widget.isDark),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 
-  Widget _buildNotApplied(double sw, double sh) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(sw, sh),
-        SizedBox(height: sh * 0.012),
-        Text(
-          'Applied today?',
-          style: TextStyle(
-            fontSize: sh * 0.019,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimary(widget.isDark),
-          ),
+  Widget _buildNotApplied(double sw, double sh) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _header(),
+      SizedBox(height: sh * 0.011),
+      Text(
+        'Applied today?',
+        style: TextStyle(
+          fontSize: sh * 0.018,
+          fontWeight: FontWeight.w500,
+          color: AppTheme.textPrimary(widget.isDark),
         ),
-        SizedBox(height: sh * 0.003),
-        Text(
-          'SPF $_spf · $_totalSessions application${_totalSessions > 1 ? 's' : ''} needed today',
-          style: AppTheme.bodySecondary(widget.isDark),
+      ),
+      SizedBox(height: sh * 0.003),
+      Text(
+        'SPF $_spf · $_totalSessions application${_totalSessions != 1 ? "s" : ""} needed today',
+        style: AppTheme.bodySecondary(widget.isDark),
+      ),
+      SizedBox(height: sh * 0.002),
+      Text(
+        'Based on your skin type and UV index',
+        style: TextStyle(
+          fontSize: sh * 0.013,
+          color: AppTheme.textMuted(widget.isDark),
         ),
-        SizedBox(height: sh * 0.003),
-        Text(
-          'Based on your skin type and UV index',
-          style: TextStyle(
-            fontSize: sh * 0.013,
-            color: AppTheme.textMuted(widget.isDark),
-          ),
-        ),
-        SizedBox(height: sh * 0.016),
-        Pressable(
-          onTap: _onApplied,
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: sh * 0.016),
-            decoration: _greenBtn,
-            child: Center(
-              child: Text(
-                'I applied sunscreen',
-                style: TextStyle(
-                  fontSize: sh * 0.018,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.ctaText(widget.isDark),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+      SizedBox(height: sh * 0.015),
+      _blackBtn(
+        label: 'I applied sunscreen',
+        onTap: _onApplied,
+        isLoading: _isLoading,
+      ),
+    ],
+  );
 
   Widget _buildRunning(double sw, double sh) {
     final pill = Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: sw * 0.025, vertical: sh * 0.004),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF15803D).withValues(alpha: 0.12),
-        border: Border.all(
-            color: const Color(0xFF15803D).withValues(alpha: 0.25),
-            width: 0.5),
+        color: const Color(0xFFFEF9C3),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         '$_sessionsCompleted of $_totalSessions done',
-        style: TextStyle(
-          fontSize: sh * 0.012,
+        style: const TextStyle(
+          fontSize: 8.5,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF15803D),
+          color: Color(0xFF854D0E),
         ),
       ),
     );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(sw, sh, trailing: pill),
-        SizedBox(height: sh * 0.011),
+        _header(trailing: pill),
+        SizedBox(height: sh * 0.01),
         Text(
           _timeDisplay,
           style: TextStyle(
-            fontSize: sh * 0.027,
+            fontSize: sh * 0.025,
             fontWeight: FontWeight.w700,
             color: AppTheme.textPrimary(widget.isDark),
             letterSpacing: -0.5,
@@ -385,29 +410,34 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
           'Applied $_appliedDisplay · SPF $_spf',
           style: AppTheme.bodySecondary(widget.isDark),
         ),
-        SizedBox(height: sh * 0.011),
+        SizedBox(height: sh * 0.01),
         ClipRRect(
           borderRadius: BorderRadius.circular(2),
           child: LinearProgressIndicator(
             value: _progress,
             backgroundColor: AppTheme.progressTrack(widget.isDark),
-            valueColor:
-                AlwaysStoppedAnimation<Color>(_progressColor),
+            valueColor: AlwaysStoppedAnimation<Color>(_progressColor),
             minHeight: sh * 0.003,
           ),
         ),
-        SizedBox(height: sh * 0.004),
+        SizedBox(height: sh * 0.003),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(_appliedDisplay,
-                style: TextStyle(
-                    fontSize: sh * 0.011,
-                    color: AppTheme.textMuted(widget.isDark))),
-            Text(_expiresDisplay,
-                style: TextStyle(
-                    fontSize: sh * 0.011,
-                    color: AppTheme.textMuted(widget.isDark))),
+            Text(
+              _appliedDisplay,
+              style: TextStyle(
+                fontSize: 7.5,
+                color: AppTheme.textMuted(widget.isDark),
+              ),
+            ),
+            Text(
+              _expiresDisplay,
+              style: TextStyle(
+                fontSize: 7.5,
+                color: AppTheme.textMuted(widget.isDark),
+              ),
+            ),
           ],
         ),
       ],
@@ -416,36 +446,31 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
 
   Widget _buildExpired(double sw, double sh) {
     final pill = Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: sw * 0.025, vertical: sh * 0.004),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0xFFDC2626).withValues(alpha: 0.1),
-        border: Border.all(
-            color: const Color(0xFFDC2626).withValues(alpha: 0.2),
-            width: 0.5),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
+      child: const Text(
         'Reapply now',
         style: TextStyle(
-          fontSize: sh * 0.012,
+          fontSize: 8.5,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFFDC2626),
+          color: Color(0xFFDC2626),
         ),
       ),
     );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(sw, sh, trailing: pill),
-        SizedBox(height: sh * 0.011),
-        Text(
+        _header(trailing: pill),
+        SizedBox(height: sh * 0.01),
+        const Text(
           'Time to reapply!',
           style: TextStyle(
-            fontSize: sh * 0.027,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFFDC2626),
+            color: Color(0xFFDC2626),
             letterSpacing: -0.5,
           ),
         ),
@@ -454,110 +479,88 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
           'Application $_sessionsCompleted of $_totalSessions complete',
           style: AppTheme.bodySecondary(widget.isDark),
         ),
-        SizedBox(height: sh * 0.011),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
-            value: 0,
-            backgroundColor: const Color(0xFFDC2626).withValues(alpha: 0.15),
-            valueColor: AlwaysStoppedAnimation<Color>(
-                const Color(0xFFDC2626).withValues(alpha: 0.5)),
-            minHeight: sh * 0.003,
-          ),
-        ),
-        SizedBox(height: sh * 0.016),
-        Pressable(
+        SizedBox(height: sh * 0.012),
+        _blackBtn(
+          label: 'I reapplied',
           onTap: _onApplied,
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: sh * 0.016),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDC2626),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Center(
-              child: Text(
-                'I reapplied',
-                style: TextStyle(
-                  fontSize: sh * 0.018,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
+          isRed: true,
+          isLoading: _isLoading,
         ),
       ],
     );
   }
 
-  Widget _buildAllDone(double sw, double sh) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(sw, sh),
-        SizedBox(height: sh * 0.012),
-        Row(
-          children: [
-            Container(
-              width: sh * 0.038,
-              height: sh * 0.038,
-              decoration: BoxDecoration(
-                color: const Color(0xFF15803D).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.check_rounded,
-                  color: Color(0xFF15803D), size: 16),
+  Widget _buildAllDone(double sw, double sh) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _header(),
+      SizedBox(height: sh * 0.011),
+      Row(
+        children: [
+          Container(
+            width: sh * 0.036,
+            height: sh * 0.036,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1a5c35).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
             ),
-            SizedBox(width: sw * 0.025),
-            Text(
-              'Protected for today',
-              style: TextStyle(
-                fontSize: sh * 0.019,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary(widget.isDark),
-              ),
+            child: const Icon(
+              Icons.check_rounded,
+              color: Color(0xFF1a5c35),
+              size: 14,
             ),
-          ],
-        ),
-        SizedBox(height: sh * 0.006),
-        Text(
-          'All $_totalSessions applications done',
-          style: AppTheme.bodySecondary(widget.isDark),
-        ),
-        SizedBox(height: sh * 0.003),
-        Text(
-          'Great job staying safe!',
-          style: TextStyle(
-            fontSize: sh * 0.013,
-            fontWeight: FontWeight.w500,
-            color: const Color(0xFF15803D),
           ),
+          SizedBox(width: sw * 0.022),
+          Text(
+            'Protected for today',
+            style: TextStyle(
+              fontSize: sh * 0.018,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary(widget.isDark),
+            ),
+          ),
+        ],
+      ),
+      SizedBox(height: sh * 0.005),
+      Text(
+        'All $_totalSessions applications done',
+        style: AppTheme.bodySecondary(widget.isDark),
+      ),
+      SizedBox(height: sh * 0.003),
+      Text(
+        'Great job staying safe!',
+        style: TextStyle(
+          fontSize: sh * 0.013,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF1a5c35),
         ),
-        SizedBox(height: sh * 0.013),
-        Row(
-          children: List.generate(_totalSessions, (i) => Expanded(
+      ),
+      SizedBox(height: sh * 0.012),
+      Row(
+        children: List.generate(
+          _totalSessions,
+          (i) => Expanded(
             child: Container(
               margin: EdgeInsets.only(right: i < _totalSessions - 1 ? 4 : 0),
               height: 3,
               decoration: BoxDecoration(
-                color: const Color(0xFF15803D),
+                color: const Color(0xFF1a5c35),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-          )),
-        ),
-        SizedBox(height: sh * 0.004),
-        Center(
-          child: Text(
-            '$_totalSessions of $_totalSessions complete',
-            style: TextStyle(
-              fontSize: sh * 0.011,
-              color: AppTheme.textMuted(widget.isDark),
-            ),
           ),
         ),
-      ],
-    );
-  }
+      ),
+      SizedBox(height: sh * 0.004),
+      Center(
+        child: Text(
+          '$_totalSessions of $_totalSessions complete',
+          style: TextStyle(
+            fontSize: 8,
+            color: AppTheme.textMuted(widget.isDark),
+          ),
+        ),
+      ),
+    ],
+  );
 }

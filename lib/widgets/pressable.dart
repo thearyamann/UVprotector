@@ -30,19 +30,14 @@ class _PressableState extends State<Pressable>
       duration: const Duration(milliseconds: 80),
       reverseDuration: const Duration(milliseconds: 200),
     );
-    _scale = Tween<double>(begin: 1.0, end: widget.scaleDown).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeIn),
-    );
-    _opacity = Tween<double>(begin: 1.0, end: 0.75).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeIn),
-    );
+    _scale = Tween<double>(begin: 1.0, end: widget.scaleDown)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    _opacity = Tween<double>(begin: 1.0, end: 0.75)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {

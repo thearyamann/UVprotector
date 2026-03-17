@@ -3,62 +3,78 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  static const List<Color> lightGradient = [
-    Color(0xFFF5EBE0),
-    Color(0xFFEAEEF4),
-    Color(0xFFE4EEFF),
-    Color(0xFFDDEEE2),
+  /// Green gradient header 
+  static const List<Color> greenGradient = [
+    Color(0xFF0f3320),
+    Color(0xFF1a5c35),
+    Color(0xFF22774a),
   ];
 
-  static const List<Color> darkGradient = [
-    Color(0xFF1a0f2e),
-    Color(0xFF0d1f3c),
-    Color(0xFF0a2240),
-    Color(0xFF0d2518),
-  ];
+  // ── Page backgrounds 
+  static const Color lightBg = Color(0xFFF2F5F2);
+  static const Color darkBg  = Color(0xFF0d1a0f);
 
+  // ── Card ───────────────────────────────────────────────
   static Color cardBg(bool isDark) => isDark
-      ? const Color(0x0FFFFFFF)
-      : const Color(0x80FFFFFF);
+      ? const Color(0x12FFFFFF)
+      : const Color(0x99FFFFFF);
 
   static Color cardBorder(bool isDark) => isDark
-      ? const Color(0x20FFFFFF)
-      : const Color(0xD0FFFFFF);
+      ? const Color(0x1FFFFFFF)
+      : const Color(0xF0FFFFFF);
 
+  static BoxDecoration cardDecoration(bool isDark) => BoxDecoration(
+    color: cardBg(isDark),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: cardBorder(isDark), width: 0.5),
+  );
+
+  // ── Skeleton shimmer ───────────────────────────────────
   static Color skeletonBase(bool isDark) => isDark
       ? const Color(0x18FFFFFF)
-      : const Color(0xFFE2E8EF);
+      : const Color(0xFFDDE4DD);
 
   static Color skeletonShimmer(bool isDark) => isDark
       ? const Color(0x28FFFFFF)
-      : const Color(0xFFF0F4F8);
+      : const Color(0xFFEDF2ED);
 
-static BoxDecoration cardDecoration(bool isDark) => BoxDecoration(
-  color: cardBg(isDark),
-  borderRadius: BorderRadius.circular(18),
-  border: Border.all(color: cardBorder(isDark), width: 0.5),
-);
-
+  // ── Text ───────────────────────────────────────────────
   static Color textPrimary(bool isDark) => isDark
-      ? const Color(0xF2FFFFFF)
-      : const Color(0xFF1a2332);
+      ? const Color(0xF0FFFFFF)
+      : const Color(0xFF1a2a1a);
 
   static Color textSecondary(bool isDark) => isDark
       ? const Color(0x80FFFFFF)
-      : const Color(0xFF4a5a6a);
+      : const Color(0xFF4a5a4a);
 
   static Color textLabel(bool isDark) => isDark
-      ? const Color(0x66FFFFFF)
-      : const Color(0xFF6a7a8a);
+      ? const Color(0x60FFFFFF)
+      : const Color(0xFF7a8a7a);
 
   static Color textMuted(bool isDark) => isDark
-      ? const Color(0x59FFFFFF)
-      : const Color(0xFF8a9aaa);
+      ? const Color(0x45FFFFFF)
+      : const Color(0xFF9aaa9a);
 
+  // ── Brand / accent ─────────────────────────────────────
+  static Color brandGreen(bool isDark) => isDark
+      ? const Color(0xFF4ADE80)
+      : const Color(0xFF1a5c35);
+
+  // ── CTA compatibility colors (legacy references) ───────
+  static Color ctaBg(bool isDark) => brandGreen(isDark);
+
+  static Color ctaBorder(bool isDark) =>
+      brandGreen(isDark).withValues(alpha: isDark ? 0.55 : 0.35);
+
+  static Color ctaText(bool isDark) =>
+      isDark ? const Color(0xFF05210F) : const Color(0xFFFFFFFF);
+
+  // kept for any legacy references
   static Color brandBlue(bool isDark) => isDark
-      ? const Color(0xFF60A5FA)
-      : const Color(0xFF3B7DD8);
+      ? const Color(0xFF4ADE80)
+      : const Color(0xFF1a5c35);
 
+  // ── Risk colours ───────────────────────────────────────
   static Color riskColor(String? riskLevel) {
     switch (riskLevel) {
       case 'Low':       return const Color(0xFF16A34A);
@@ -68,61 +84,52 @@ static BoxDecoration cardDecoration(bool isDark) => BoxDecoration(
       default:          return const Color(0xFF7C3AED);
     }
   }
-static Color ctaBg(bool isDark) => isDark
-    ? const Color(0x1F4ADE80)
-    : const Color(0x2514532D);
 
-static Color ctaBorder(bool isDark) => isDark
-    ? const Color(0x404ADE80)
-    : const Color(0x4515803D);
+  // ── Black button ───────────────────────────────────────
+  static BoxDecoration blackBtn() => BoxDecoration(
+    color: const Color(0xD9141414),
+    borderRadius: BorderRadius.circular(12),
+  );
 
-static Color ctaText(bool isDark) => isDark
-    ? const Color(0xFF4ADE80)
-    : const Color(0xFF14532D);
+  // ── Progress track ─────────────────────────────────────
   static Color progressTrack(bool isDark) => isDark
       ? const Color(0x14FFFFFF)
-      : const Color(0x40B4C3D2);
+      : const Color(0x30000000);
 
+  // ── Text styles ────────────────────────────────────────
   static TextStyle labelSmall(bool isDark) => TextStyle(
-    fontSize: 10,
+    fontSize: 9.5,
     color: textLabel(isDark),
-    letterSpacing: 0.6,
+    letterSpacing: 0.55,
     fontWeight: FontWeight.w600,
   );
 
   static TextStyle numberLarge(bool isDark) => TextStyle(
-    fontSize: 40,
+    fontSize: 38,
     fontWeight: FontWeight.w300,
     color: textPrimary(isDark),
     height: 1,
   );
 
   static TextStyle numberMedium(bool isDark) => TextStyle(
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: FontWeight.w300,
     color: textPrimary(isDark),
     height: 1,
   );
 
   static TextStyle bodyPrimary(bool isDark) => TextStyle(
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: FontWeight.w500,
     color: textPrimary(isDark),
   );
 
   static TextStyle bodySecondary(bool isDark) =>
-      TextStyle(fontSize: 11, color: textMuted(isDark));
+      TextStyle(fontSize: 10.5, color: textMuted(isDark));
 
   static TextStyle unitText(bool isDark) => TextStyle(
-    fontSize: 12,
+    fontSize: 11,
     color: textMuted(isDark),
     fontWeight: FontWeight.w400,
   );
-
-  static const Color bgPage       = Color(0xFFEAEEF4);
-  static const Color bgCard       = Colors.white;
-  static const Color ctaGreen     = Color(0xFFA8D971);
-  static const Color ctaGreenText = Color(0xFF2d5a1b);
-  static const double cardGap     = 10;
-  static const double pageHPad    = 16;
 }
