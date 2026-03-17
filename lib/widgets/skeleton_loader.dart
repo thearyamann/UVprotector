@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-class SkeletonBox extends StatefulWidget {
+class SkeletonBox extends StatelessWidget {
   final double width;
   final double height;
   final double radius;
@@ -16,10 +16,34 @@ class SkeletonBox extends StatefulWidget {
   });
 
   @override
-  State<SkeletonBox> createState() => _SkeletonBoxState();
+  Widget build(BuildContext context) {
+    return _ShimmerBox(
+      width: width,
+      height: height,
+      radius: radius,
+      isDark: isDark,
+    );
+  }
 }
 
-class _SkeletonBoxState extends State<SkeletonBox>
+class _ShimmerBox extends StatefulWidget {
+  final double width;
+  final double height;
+  final double radius;
+  final bool isDark;
+
+  const _ShimmerBox({
+    required this.width,
+    required this.height,
+    required this.isDark,
+    this.radius = 8,
+  });
+
+  @override
+  State<_ShimmerBox> createState() => _ShimmerBoxState();
+}
+
+class _ShimmerBoxState extends State<_ShimmerBox>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
@@ -35,7 +59,10 @@ class _SkeletonBoxState extends State<SkeletonBox>
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +86,7 @@ class _SkeletonBoxState extends State<SkeletonBox>
 
 class SkeletonHomeScreen extends StatelessWidget {
   final bool isDark;
+
   const SkeletonHomeScreen({super.key, required this.isDark});
 
   @override
@@ -70,96 +98,148 @@ class SkeletonHomeScreen extends StatelessWidget {
     final cardW = (sw - pad * 2 - sw * 0.026) / 2;
 
     Widget sb(double w, double h, {double r = 8}) =>
-        SkeletonBox(width: w, height: h, radius: r, isDark: isDark);
+        _ShimmerBox(width: w, height: h, radius: r, isDark: isDark);
 
-    Widget card({Widget? child}) => ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(13),
-        decoration: AppTheme.cardDecoration(isDark),
-        child: child,
-      ),
+    Widget card({Widget? child, double? h}) => Container(
+      height: h,
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: AppTheme.cardDecoration(isDark),
+      child: child,
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: gap * 1.3),
+
         IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: card(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  sb(56, 9), const SizedBox(height: 9),
-                  sb(34, 34, r: 6), const SizedBox(height: 7),
-                  sb(42, 11, r: 4), const SizedBox(height: 10),
-                  sb(cardW - 26, 3, r: 2), const SizedBox(height: 8),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [sb(26, 8, r: 3), sb(52, 8, r: 3)]),
-                ],
-              ))),
+              Expanded(
+                child: card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      sb(56, 10),
+                      const SizedBox(height: 10),
+                      sb(36, 36, r: 6),
+                      const SizedBox(height: 8),
+                      sb(42, 12, r: 4),
+                      const SizedBox(height: 12),
+                      sb(cardW - 28, 4, r: 2),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [sb(28, 9, r: 3), sb(56, 9, r: 3)],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               SizedBox(width: sw * 0.026),
-              Expanded(child: card(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  sb(60, 9), const SizedBox(height: 9),
-                  sb(38, 30, r: 6), const SizedBox(height: 6),
-                  sb(66, 10, r: 4), const Spacer(),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [sb(26, 8, r: 3), sb(26, 8, r: 3)]),
-                ],
-              ))),
+              Expanded(
+                child: card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      sb(60, 10),
+                      const SizedBox(height: 10),
+                      sb(40, 32, r: 6),
+                      const SizedBox(height: 6),
+                      sb(70, 11, r: 4),
+                      const Spacer(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [sb(28, 9, r: 3), sb(28, 9, r: 3)],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
+
         SizedBox(height: gap),
-        card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          sb(110, 9), const SizedBox(height: 11),
-          sb(150, 14, r: 5), const SizedBox(height: 5),
-          sb(180, 10, r: 4), const SizedBox(height: 14),
-          sb(sw - pad * 2 - 26, 40, r: 12),
-        ])),
-        SizedBox(height: gap),
-        IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Expanded(child: card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              sb(60, 9), const SizedBox(height: 9),
-              sb(42, 24, r: 6), const SizedBox(height: 7),
-              sb(50, 10, r: 4),
-            ]))),
-            SizedBox(width: sw * 0.026),
-            Expanded(child: card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              sb(64, 9), const SizedBox(height: 9),
-              sb(50, 18, r: 5), const SizedBox(height: 7),
-              sb(76, 10, r: 4), const SizedBox(height: 5),
-              sb(68, 8, r: 3),
-            ]))),
-          ]),
+
+        card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              sb(110, 10),
+              const SizedBox(height: 12),
+              sb(140, 16, r: 5),
+              const SizedBox(height: 6),
+              sb(190, 11, r: 4),
+              const SizedBox(height: 16),
+              sb(sw - pad * 2 - 28, 44, r: 13),
+            ],
+          ),
         ),
+
         SizedBox(height: gap),
-        card(child: Row(children: [
-          SkeletonBox(width: 34, height: 34, radius: 9, isDark: isDark),
-          const SizedBox(width: 11),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            sb(sw * 0.40, 12, r: 4), const SizedBox(height: 5),
-            sb(sw * 0.26, 9, r: 4),
-          ])),
-        ])),
+
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      sb(60, 10),
+                      const SizedBox(height: 10),
+                      sb(44, 26, r: 6),
+                      const SizedBox(height: 8),
+                      sb(52, 11, r: 4),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(width: sw * 0.026),
+              Expanded(
+                child: card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      sb(66, 10),
+                      const SizedBox(height: 10),
+                      sb(52, 20, r: 6),
+                      const SizedBox(height: 8),
+                      sb(80, 11, r: 4),
+                      const SizedBox(height: 6),
+                      sb(70, 9, r: 3),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
         SizedBox(height: gap),
-        card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          sb(90, 9), const SizedBox(height: 10),
-          ...List.generate(4, (i) => Padding(
-            padding: EdgeInsets.only(bottom: i < 3 ? 8.0 : 0),
-            child: Row(children: [
-              SkeletonBox(width: 18, height: 18, radius: 5, isDark: isDark),
-              const SizedBox(width: 9),
-              sb(sw * 0.35, 10, r: 4),
-            ]),
-          )),
-        ])),
+
+        card(
+          child: Row(
+            children: [
+              _ShimmerBox(width: 36, height: 36, radius: 10, isDark: isDark),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    sb(sw * 0.42, 13, r: 4),
+                    const SizedBox(height: 6),
+                    sb(sw * 0.28, 10, r: 4),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
