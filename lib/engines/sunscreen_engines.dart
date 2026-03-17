@@ -2,14 +2,16 @@ class SunscreenEngine {
   static int getReapplyMinutes(double uvIndex, int spf) {
     if (uvIndex <= 0) return 0;
     int base;
-    if (uvIndex < 3)       base = 180;
-    else if (uvIndex < 6)  base = 120;
+    if (uvIndex < 3) {
+      base = 180;
+    } else if (uvIndex < 6)  base = 120;
     else if (uvIndex < 8)  base = 90;
     else                   base = 60;
 
     double multiplier;
-    if (spf >= 50)      multiplier = 1.6;
-    else if (spf >= 30) multiplier = 1.3;
+    if (spf >= 50) {
+      multiplier = 1.6;
+    } else if (spf >= 30) multiplier = 1.3;
     else                multiplier = 1.0;
 
     return (base * multiplier).round();

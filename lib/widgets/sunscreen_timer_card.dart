@@ -24,7 +24,7 @@ class SunscreenTimerCard extends StatefulWidget {
 class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   Timer? _ticker;
 
-  // Session state
+
   int  _sessionsCompleted = 0;
   int  _totalSessions     = 0;
   int  _secondsLeft       = 0;
