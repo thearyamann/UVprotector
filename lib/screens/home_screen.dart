@@ -17,6 +17,7 @@ import '../widgets/burn_time_card.dart';
 import '../widgets/protection_card.dart';
 import '../widgets/advice_card.dart';
 import '../widgets/skeleton_loader.dart';
+import '../widgets/daily_routine_card.dart';
 import '../widgets/pressable.dart';
 import '../services/location_service.dart';
 import '../services/preferences_service.dart';
@@ -83,12 +84,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() { _isLoading = true; _errorMessage = null; });
 
     try {
-      final cached = await UVCacheService.loadCachedUVData();
-      if (cached != null && !await UVCacheService.shouldRefresh()) {
-        if (mounted) setState(() { _uvData = cached; _isLoading = false; });
-        _fetchWeather(cached.latitude, cached.longitude);
-        return;
-      }
+      // ⚠️ TEMP: Cache bypass for testing — REMOVE AFTER TESTING
+      // final cached = await UVCacheService.loadCachedUVData();
+      // if (cached != null && !await UVCacheService.shouldRefresh()) {
+      //   if (mounted) setState(() { _uvData = cached; _isLoading = false; });
+      //   _fetchWeather(cached.latitude, cached.longitude);
+      //   return;
+      // }
 
       final uvData = await _uvController.getCurrentUVData(
         skinTypeNumber: _selectedSkinType.type,
@@ -227,6 +229,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     SizedBox(height: verticalGap),
 
+                    DailyRoutineCard(isDark: isDark, uvData: _uvData),
+                    SizedBox(height: verticalGap),
+
                     AdviceCard(uvData: _uvData, isDark: isDark),
 
                     if (_errorMessage != null)
@@ -254,13 +259,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           const SunIcon(),
           Pressable(
-            onTap: () async {
-              await PreferencesService.resetOnboarding();
-              if (!mounted) return;
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-              );
-            },
+              onTap: () async {
+                await UVCacheService.clearSession(); // Clear session
+                await PreferencesService.resetOnboarding();
+                if (!mounted) return;
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                );
+              },
             child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: screenHeight * 0.014,

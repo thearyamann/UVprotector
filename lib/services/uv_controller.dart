@@ -4,7 +4,6 @@ import '../engines/uv_risk_engine.dart';
 import '../engines/sun_exposure_engines.dart';
 import '../engines/sunscreen_engines.dart';
 import '../models/uv_data.dart';
-import '../services/preferences_service.dart';
 
 class UVController {
   final LocationService _locationService;
@@ -18,10 +17,13 @@ class UVController {
     final position = await _locationService.getCurrentLocation();
     print('📍 Fetching UV for: ${position.latitude}, ${position.longitude}');
 
-    final uvIndex = await _apiService.fetchUVIndex(
+    // ignore: unused_local_variable
+    final _realUV = await _apiService.fetchUVIndex(
       position.latitude,
       position.longitude,
     );
+    // ⚠️ TEMP: Hardcoded high UV for testing — REMOVE AFTER TESTING
+    const double uvIndex = 9.0;
 
     final riskLevel = UVRiskEngine.getRiskLevel(uvIndex);
     final burnTime = SunExposureEngine.calculateBurnTime(
@@ -30,8 +32,7 @@ class UVController {
     );
     final advice = SunExposureEngine.getExposureAdvice(burnTime);
     final spf = SunscreenEngine.getSpfRecommendation(uvIndex);
-    final prefs = await PreferencesService.loadPreferences();
-    final reapply = SunscreenEngine.getReapplyMinutes(uvIndex, prefs.spf);
+    final reapply = SunscreenEngine.getReapplyMinutes(uvIndex);
 
     return UVData(
       uvIndex: uvIndex,

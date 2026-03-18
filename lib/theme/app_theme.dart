@@ -4,13 +4,13 @@ class AppTheme {
   AppTheme._();
 
   static const List<Color> lightGradient = [
-    Color(0xFFF5EBE0),
-    Color(0xFFEAEEF4),
-    Color(0xFFE4EEFF),
-    Color(0xFFDDEEE2),
+   Color(0xFFE0D0BC),  // stronger peach
+  Color(0xFFE0E7F2),  // blue-grey (unchanged)
+  Color(0xFFFBFBFB),  // blue (unchanged)
+  Color(0xFFCFE3D6),  // stronger mint// mint   // more mint
   ];
 
-  static const List<Color> darkGradient = [
+  static const List<Color> darkGradient = [ 
     Color(0xFF1a0f2e),
     Color(0xFF0d1f3c),
     Color(0xFF0a2240),
@@ -19,11 +19,11 @@ class AppTheme {
 
   static Color cardBg(bool isDark) => isDark
       ? const Color(0x0FFFFFFF)
-      : const Color(0x80FFFFFF);
+      : const Color(0xB8FFFFFF);
 
   static Color cardBorder(bool isDark) => isDark
       ? const Color(0x20FFFFFF)
-      : const Color(0xD0FFFFFF);
+      : const Color(0xE0FFFFFF);
 
   static Color skeletonBase(bool isDark) => isDark
       ? const Color(0x18FFFFFF)
@@ -37,6 +37,13 @@ static BoxDecoration cardDecoration(bool isDark) => BoxDecoration(
   color: cardBg(isDark),
   borderRadius: BorderRadius.circular(18),
   border: Border.all(color: cardBorder(isDark), width: 0.5),
+  boxShadow: isDark ? null : [
+    BoxShadow(
+      color: const Color(0x0D000000),
+      blurRadius: 12,
+      offset: const Offset(0, 2),
+    ),
+  ],
 );
 
   static Color textPrimary(bool isDark) => isDark

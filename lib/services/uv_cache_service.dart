@@ -55,18 +55,29 @@ class UVCacheService {
     required int totalSessions,
     required int reapplyMinutes,
     required int spf,
+    required double lockedUV,
   }) async {
     final store = await SharedPreferences.getInstance();
     final now   = DateTime.now();
     final date  = '${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')}';
+
+    // Preserve existing locked values if session already exists today
+    final existing = await loadSessionData();
+    final effectiveLockedUV = existing?['lockedUV'] as double? ?? lockedUV;
+    final effectiveReapply  = existing?['lockedReapplyMinutes'] as int? ?? reapplyMinutes;
+    final effectiveTotal    = existing?['lockedTotalSessions'] as int? ?? totalSessions;
+
     await store.setString(_keySessionData, jsonEncode({
-      'date':              date,
-      'sessionsCompleted': sessionsCompleted,
-      'totalSessions':     totalSessions,
-      'lastAppliedAt':     now.millisecondsSinceEpoch,
-      'sessionStartedAt':  now.millisecondsSinceEpoch,
-      'reapplyMinutes':    reapplyMinutes,
-      'spf':               spf,
+      'date':                date,
+      'sessionsCompleted':   sessionsCompleted,
+      'totalSessions':       totalSessions,
+      'lastAppliedAt':       now.millisecondsSinceEpoch,
+      'sessionStartedAt':    now.millisecondsSinceEpoch,
+      'reapplyMinutes':      reapplyMinutes,
+      'spf':                 spf,
+      'lockedUV':            effectiveLockedUV,
+      'lockedReapplyMinutes': effectiveReapply,
+      'lockedTotalSessions':  effectiveTotal,
     }));
   }
 

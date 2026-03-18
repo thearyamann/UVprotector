@@ -24,7 +24,6 @@ class SunscreenTimerCard extends StatefulWidget {
 class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   Timer? _ticker;
 
-
   int  _sessionsCompleted = 0;
   int  _totalSessions     = 0;
   int  _secondsLeft       = 0;
@@ -32,9 +31,11 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   int  _reapplyMinutes    = 90;
   int  _spf               = 30;
   int  _skinType          = 3;
+  double _lockedUV        = 0;
   DateTime? _sessionStartedAt;
 
   bool _loaded = false;
+  bool _showEscalationAlert = false;
 
   @override
   void initState() {
@@ -46,7 +47,9 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   void didUpdateWidget(SunscreenTimerCard old) {
     super.didUpdateWidget(old);
     if (widget.uvData != old.uvData && widget.uvData != null) {
-      _recalculate();
+      // ── LOCK-AT-FIRST-APPLY: do NOT recalculate timer ──
+      // Only check for escalation alert if session is active
+      _checkEscalation();
     }
   }
 
@@ -61,23 +64,27 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   Future<void> _loadSession() async {
     final session = await UVCacheService.loadSessionData();
     final uv      = widget.uvData?.uvIndex ?? 0;
-    final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
-    final reapply = SunscreenEngine.getReapplyMinutes(uv, _spf);
 
     if (session == null) {
+      // No session today — show pre-apply state with LIVE UV values
+      final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
+      final reapply = SunscreenEngine.getReapplyMinutes(uv);
       _sessionsCompleted = 0;
       _totalSessions     = total;
       _reapplyMinutes    = reapply;
       _totalSeconds      = 0;
       _secondsLeft       = 0;
+      _lockedUV          = 0;
       _sessionStartedAt  = null;
       return;
     }
 
+    // Session exists — use LOCKED values (never recalculate from live UV)
     _sessionsCompleted = session['sessionsCompleted'] as int;
-    _totalSessions     = session['totalSessions'] as int;
-    _reapplyMinutes    = session['reapplyMinutes'] as int;
+    _totalSessions     = session['lockedTotalSessions'] as int? ?? session['totalSessions'] as int;
+    _reapplyMinutes    = session['lockedReapplyMinutes'] as int? ?? session['reapplyMinutes'] as int;
     _spf               = session['spf'] as int;
+    _lockedUV          = (session['lockedUV'] as num?)?.toDouble() ?? uv;
 
     final startedAt = DateTime.fromMillisecondsSinceEpoch(
         session['sessionStartedAt'] as int);
@@ -100,15 +107,18 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     }
   }
 
-  void _recalculate() {
-    final uv      = widget.uvData?.uvIndex ?? 0;
-    final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
-    final reapply = SunscreenEngine.getReapplyMinutes(uv, _spf);
-    setState(() {
-      _totalSessions  = total;
-      _reapplyMinutes = reapply;
-      _totalSeconds   = reapply * 60;
-    });
+  /// Check if live UV has risen significantly above locked UV.
+  /// If so, show a one-time escalation alert — but do NOT change timer.
+  void _checkEscalation() {
+    if (_lockedUV <= 0 || _sessionsCompleted == 0) return;
+    final liveUV = widget.uvData?.uvIndex ?? 0;
+    if (liveUV >= _lockedUV + 2 && !_showEscalationAlert) {
+      if (mounted) setState(() => _showEscalationAlert = true);
+    }
+  }
+
+  void _dismissEscalation() {
+    setState(() => _showEscalationAlert = false);
   }
 
   void _startTicker() {
@@ -125,9 +135,11 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   }
 
   Future<void> _onApplied() async {
-    final uv      = widget.uvData?.uvIndex ?? 0;
+    final uv = widget.uvData?.uvIndex ?? 0;
+
+    // Calculate from current UV — these get LOCKED for the rest of the day
     final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
-    final reapply = SunscreenEngine.getReapplyMinutes(uv, _spf);
+    final reapply = SunscreenEngine.getReapplyMinutes(uv);
     final newCompleted = _sessionsCompleted + 1;
 
     await UVCacheService.saveSession(
@@ -135,6 +147,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       totalSessions:     total,
       reapplyMinutes:    reapply,
       spf:               _spf,
+      lockedUV:          uv,
     );
 
     setState(() {
@@ -143,7 +156,9 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       _reapplyMinutes    = reapply;
       _totalSeconds      = reapply * 60;
       _secondsLeft       = reapply * 60;
+      _lockedUV          = uv;
       _sessionStartedAt  = DateTime.now();
+      _showEscalationAlert = false;
     });
 
     if (newCompleted < total) _startTicker();
@@ -216,17 +231,71 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       padding: EdgeInsets.all(sw * 0.044),
       child: !_loaded
           ? _buildLoading(sh)
-          : isLowUV
-              ? _buildLowUV(sw, sh)
-              : allDone
-                  ? _buildAllDone(sw, sh)
-                  : isRunning
-                      ? _buildRunning(sw, sh)
-                      : isExpired
-                          ? _buildExpired(sw, sh)
-                          : firstApply
-                              ? _buildNotApplied(sw, sh)
-                              : _buildNotApplied(sw, sh),
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isLowUV)
+                  _buildLowUV(sw, sh)
+                else if (allDone)
+                  _buildAllDone(sw, sh)
+                else if (isRunning)
+                  _buildRunning(sw, sh)
+                else if (isExpired)
+                  _buildExpired(sw, sh)
+                else if (firstApply)
+                  _buildNotApplied(sw, sh)
+                else
+                  _buildNotApplied(sw, sh),
+
+                // ── Escalation alert ──
+                if (_showEscalationAlert) ...[
+                  SizedBox(height: sh * 0.01),
+                  _buildEscalationAlert(sw, sh),
+                ],
+              ],
+            ),
+    );
+  }
+
+  Widget _buildEscalationAlert(double sw, double sh) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: sw * 0.03,
+        vertical: sh * 0.008,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD97706).withValues(alpha: widget.isDark ? 0.15 : 0.08),
+        border: Border.all(
+          color: const Color(0xFFD97706).withValues(alpha: 0.2),
+          width: 0.5,
+        ),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded,
+              size: sh * 0.018,
+              color: const Color(0xFFD97706)),
+          SizedBox(width: sw * 0.02),
+          Expanded(
+            child: Text(
+              'UV has increased — consider reapplying sooner',
+              style: TextStyle(
+                fontSize: sh * 0.012,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFFD97706),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: _dismissEscalation,
+            child: Icon(Icons.close_rounded,
+                size: sh * 0.016,
+                color: const Color(0xFFD97706)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -241,7 +310,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
             color: AppTheme.textMuted(widget.isDark),
           ),
         ),
-        SizedBox(width: 10),
+        const SizedBox(width: 10),
         Text('Loading...', style: AppTheme.bodySecondary(widget.isDark)),
       ],
     );

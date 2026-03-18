@@ -1,32 +1,36 @@
 class SunscreenEngine {
-  static int getReapplyMinutes(double uvIndex, int spf) {
-    if (uvIndex <= 0) return 0;
-    int base;
-    if (uvIndex < 3)      base = 180;
-    else if (uvIndex < 6) base = 120;
-    else if (uvIndex < 8) base = 90;
-    else                  base = 60;
-
-    double multiplier;
-    if (spf >= 50)      multiplier = 1.6;
-    else if (spf >= 30) multiplier = 1.3;
-    else                multiplier = 1.0;
-
-    return (base * multiplier).round();
+  /// AAD-aligned reapply intervals.
+  /// SPF does NOT extend duration — per AAD: "reapply on the same schedule
+  /// regardless of SPF level."
+  static int getReapplyMinutes(double uvIndex) {
+    if (uvIndex <= 0)  return 0;
+    if (uvIndex <= 2)  return 0;   // Low — no timer needed
+    if (uvIndex <= 7)  return 120;  // Moderate/High — 2 hours (AAD standard)
+    if (uvIndex <= 10) return 90;   // Very High — 1.5 hours
+    return 75;                      // Extreme — 1h 15m
   }
 
+  /// Total sunscreen applications recommended per day.
+  /// Accounts for skin type vulnerability.
   static int getTotalApplications(int skinType, double uvIndex) {
     if (uvIndex <= 2) return 0;
+
+    // Fair skin (Type 1–2)
     if (skinType <= 2) {
       if (uvIndex >= 8) return 4;
       if (uvIndex >= 6) return 3;
       return 2;
     }
+
+    // Medium / Olive skin (Type 3–4)
     if (skinType <= 4) {
       if (uvIndex >= 8) return 3;
       if (uvIndex >= 6) return 2;
       return 1;
     }
+
+    // Brown / Dark skin (Type 5–6)
+    if (uvIndex >= 8) return 2;
     return 1;
   }
 
