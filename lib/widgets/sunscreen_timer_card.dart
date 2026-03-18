@@ -40,7 +40,8 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   double _remainingOutdoorSeconds = 0.0;
 
   bool _loaded = false;
-  bool _showEscalationAlert = false;
+  bool _showEscalation = false;
+  Color? _escalationColor = const Color(0xFFEF4444); // Medium Red
   bool _isApplying = false;
 
   @override
@@ -143,7 +144,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     
     final bool isRunning = _remainingOutdoorSeconds > 0;
     if (!isRunning || widget.uvData == null || _lockedUV == null) {
-      if (_showEscalationAlert) setState(() => _showEscalationAlert = false);
+      if (_showEscalation) setState(() => _showEscalation = false);
       return;
     }
 
@@ -158,13 +159,13 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
 
     final bool shouldShow = isHigh && isLowTimer && hasIncreased;
 
-    if (_showEscalationAlert != shouldShow) {
-      setState(() => _showEscalationAlert = shouldShow);
+    if (_showEscalation != shouldShow) {
+      setState(() => _showEscalation = shouldShow);
     }
   }
   
   void _dismissEscalation() {
-    setState(() => _showEscalationAlert = false);
+    setState(() => _showEscalation = false);
   }
   
   void _startTicker() {
@@ -243,7 +244,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       _totalSeconds      = (_reapplyMinutes * 60.0 / rate).toInt();
       _lockedUV          = uv;
       _sessionStartedAt  = DateTime.now();
-      _showEscalationAlert = false;
+      _showEscalation = false;
       _isApplying = false;
     });
 
@@ -289,7 +290,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   Color get _progressColor {
     if (_progress > 0.5)  return const Color(0xFF15803D);
     if (_progress > 0.25) return const Color(0xFFD97706);
-    return const Color(0xFFDC2626);
+    return const Color(0xFFEF4444);
   }
 
   BoxDecoration get _btnDecoration {
@@ -297,20 +298,16 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     if (isDark) {
       return BoxDecoration(
         color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 0.8,
-        ),
+        borderRadius: BorderRadius.circular(15),
       );
     } else {
       const green = Color(0xFF166534); // Forest Green
       return BoxDecoration(
-        color: green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
+        color: green.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(
-          color: green,
-          width: 1.0,
+          color: green.withValues(alpha: 0.3),
+          width: 0.5,
         ),
       );
     }
@@ -360,7 +357,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
                   _buildNotApplied(sw, sh),
 
                 // ── Escalation alert ──
-                if (_showEscalationAlert) ...[
+                if (_showEscalation) ...[
                   SizedBox(height: sh * 0.01),
                   _buildEscalationAlert(sw, sh),
                 ],
@@ -380,9 +377,9 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
         vertical: sh * 0.008,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFFD97706).withValues(alpha: widget.isDark ? 0.15 : 0.08),
+        color: _escalationColor!.withValues(alpha: widget.isDark ? 0.15 : 0.08),
         border: Border.all(
-          color: const Color(0xFFD97706).withValues(alpha: 0.2),
+          color: _escalationColor!.withValues(alpha: 0.2),
           width: 0.5,
         ),
         borderRadius: BorderRadius.circular(10),
@@ -391,7 +388,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
         children: [
           Icon(Icons.warning_amber_rounded,
               size: sh * 0.018,
-              color: const Color(0xFFD97706)),
+              color: _escalationColor),
           SizedBox(width: sw * 0.02),
           Expanded(
             child: Text(
@@ -399,7 +396,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
               style: TextStyle(
                 fontSize: sh * 0.012,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFFD97706),
+                color: _escalationColor,
               ),
             ),
           ),
@@ -407,7 +404,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
             onTap: _dismissEscalation,
             child: Icon(Icons.close_rounded,
                 size: sh * 0.016,
-                color: const Color(0xFFD97706)),
+                color: _escalationColor),
           ),
         ],
       ),
@@ -493,7 +490,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
           style: TextStyle(
             fontSize: sh * 0.019,
             fontWeight: FontWeight.w600,
-            color: isHigh ? const Color(0xFFDC2626) : AppTheme.textPrimary(widget.isDark),
+            color: isHigh ? const Color(0xFFEF4444) : AppTheme.textPrimary(widget.isDark),
           ),
         ),
         SizedBox(height: sh * 0.003),
@@ -504,7 +501,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
           style: TextStyle(
             fontSize: sh * 0.014,
             fontWeight: isHigh ? FontWeight.w500 : FontWeight.w400,
-            color: isHigh ? const Color(0xFFDC2626).withValues(alpha: 0.8) : AppTheme.bodySecondary(widget.isDark).color,
+            color: isHigh ? const Color(0xFFEF4444).withValues(alpha: 0.8) : AppTheme.bodySecondary(widget.isDark).color,
           ),
         ),
         SizedBox(height: sh * 0.006),
@@ -519,7 +516,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
         _buildPillButton(
           sw: sw,
           sh: sh,
-          label: 'I applied sunscreen',
+          label: 'Applied',
           onPressed: _onApplied,
         ),
       ],
@@ -632,7 +629,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
           ],
         ),
         SizedBox(height: sh * 0.014),
-        
+
         // ── Indoor / Outdoor Toggle ──
         Container(
           width: double.infinity,
@@ -721,9 +718,9 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       padding: EdgeInsets.symmetric(
           horizontal: sw * 0.025, vertical: sh * 0.004),
       decoration: BoxDecoration(
-        color: const Color(0xFFDC2626).withValues(alpha: 0.1),
+        color: const Color(0xFFEF4444).withValues(alpha: 0.1),
         border: Border.all(
-            color: const Color(0xFFDC2626).withValues(alpha: 0.2),
+            color: const Color(0xFFEF4444).withValues(alpha: 0.2),
             width: 0.5),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -771,7 +768,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
         _buildPillButton(
           sw: sw,
           sh: sh,
-          label: 'I reapplied',
+          label: 'Reapplied',
           onPressed: _onApplied,
         ),
       ],
