@@ -11,7 +11,7 @@ class AppTheme {
   ];
 
   static const List<Color> darkGradient = [ 
-    Color(0xFF181818), // Pure Black
+    Color(0xFF000000), // Pure Black
     Color(0xFF1e1e1e), // Very Dark Grey
     Color(0xFF1e1e1e), 
     Color(0xFF1e1e1e),

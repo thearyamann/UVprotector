@@ -40,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   WeatherData? _weatherData;
   bool         _isLoading    = false;
   String?      _errorMessage;
+  String       _userName     = 'Friend';
   SkinType     _selectedSkinType = SkinType.type3;
   late ThemeController _themeController;
 
@@ -84,6 +85,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() { _isLoading = true; _errorMessage = null; });
 
     try {
+      final prefs = await PreferencesService.loadPreferences();
+      if (mounted) setState(() => _userName = prefs.name);
+      
       final pos = await LocationService().getCurrentLocation();
       await _fetchConsolidatedData(pos.latitude, pos.longitude);
     } on LocationException catch (e) {
@@ -328,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         TextSpan(
           children: [
             TextSpan(
-              text: 'Hi Aryamann\n',
+              text: 'Hi $_userName\n',
               style: TextStyle(
                 fontSize:   screenHeight * 0.027,
                 fontWeight: FontWeight.w600,

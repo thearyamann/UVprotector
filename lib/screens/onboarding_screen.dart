@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/skin_type.dart';
 import '../models/user_preferences.dart';
 import '../services/preferences_service.dart';
+import '../widgets/onboarding/name_input_step.dart';
 import '../widgets/onboarding/step_indicator.dart';
 import '../widgets/onboarding/skin_type_grid.dart';
 import '../widgets/onboarding/spf_grid.dart';
@@ -19,12 +20,14 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   int _currentStep = 0;
+  String _name = '';
   SkinType _selectedSkinType = SkinType.type3;
   int _selectedSpf = 30;
 
   Future<void> _finish() async {
     await PreferencesService.savePreferences(
       UserPreferences(
+        name: _name.isEmpty ? 'Friend' : _name,
         skinTypeNumber: _selectedSkinType.type,
         spf: _selectedSpf,
       ),
@@ -43,14 +46,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _next() {
-    if (_currentStep == 0) {
-      setState(() => _currentStep = 1);
+    if (_currentStep < 2) {
+      setState(() => _currentStep++);
     } else {
       _finish();
     }
   }
 
-  void _back() => setState(() => _currentStep = 0);
+  void _back() => setState(() => _currentStep--);
 
   @override
   Widget build(BuildContext context) {
@@ -64,51 +67,51 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           colors: isDark ? AppTheme.darkGradient : AppTheme.lightGradient,
         ),
       ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight:
-                    MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.top -
-                    MediaQuery.of(context).padding.bottom,
-              ),
-              child: IntrinsicHeight(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      transitionBuilder: (child, animation) =>
-                          FadeTransition(opacity: animation, child: child),
-                      layoutBuilder: (currentChild, previousChildren) => Stack(
-                        alignment: Alignment.topCenter,
-                        children: [
-                          ...previousChildren,
-                          if (currentChild != null) currentChild,
-                        ],
-                      ),
-                      child: _currentStep == 0 ? _buildStep1() : _buildStep2(),
+      child: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: false,
+          body: SafeArea(
+            child: CustomScrollView(
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 40),
+                        _buildHeader(),
+                        const SizedBox(height: 24),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(opacity: animation, child: child),
+                          layoutBuilder: (currentChild, previousChildren) => Stack(
+                            alignment: Alignment.topCenter,
+                            children: [
+                              ...previousChildren,
+                              if (currentChild != null) currentChild,
+                            ],
+                          ),
+                          child: _getStepContent(),
+                        ),
+                        const Spacer(),
+                        const SizedBox(height: 40),
+                        StepIndicator(totalSteps: 3, currentStep: _currentStep),
+                        const SizedBox(height: 20),
+                        OnboardingCta(
+                          isLastStep: _currentStep == 2,
+                          onContinue: _next,
+                          onBack: _back,
+                        ),
+                        const SizedBox(height: 40),
+                      ],
                     ),
-                    const Spacer(),
-                    const SizedBox(height: 24),
-                    StepIndicator(totalSteps: 2, currentStep: _currentStep),
-                    const SizedBox(height: 20),
-                    OnboardingCta(
-                      isLastStep: _currentStep == 1,
-                      onContinue: _next,
-                      onBack: _back,
-                    ),
-                    const SizedBox(height: 40),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -130,14 +133,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.12),
+            color: accentColor.withOpacity(0.12),
             border: Border.all(
-              color: accentColor.withValues(alpha: 0.2),
+              color: accentColor.withOpacity(0.2),
             ),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Icon(
-            isStep1 ? Icons.wb_sunny_outlined : Icons.shield_outlined,
+            _currentStep == 0 
+                ? Icons.person_outline
+                : (_currentStep == 1 ? Icons.wb_sunny_outlined : Icons.shield_outlined),
             color: accentColor,
             size: 24,
           ),
@@ -146,7 +151,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
           child: Text(
-            isStep1 ? 'Your skin type?' : 'Your sunscreen?',
+            _currentStep == 0 
+                ? "What's your name?" 
+                : (_currentStep == 1 ? 'Your skin type?' : 'Your sunscreen?'),
             key: ValueKey(_currentStep),
             style: TextStyle(
               fontSize: 26,
@@ -160,9 +167,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
           child: Text(
-            isStep1
-                ? 'Helps calculate your exact burn time'
-                : 'Used to calculate your reapply timer',
+            _currentStep == 0
+                ? "Let's personalize your experience"
+                : (_currentStep == 1 
+                    ? 'Helps calculate your exact burn time'
+                    : 'Used to calculate your reapply timer'),
             key: ValueKey('sub$_currentStep'),
             style: TextStyle(
               fontSize: 14,
@@ -174,6 +183,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStep0() {
+    return NameInputStep(
+      key: const ValueKey('step0'),
+      currentValue: _name,
+      onChanged: (value) => setState(() => _name = value),
+      onSubmitted: _next,
     );
   }
 
@@ -191,5 +209,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       selectedSpf: _selectedSpf,
       onSelected: (spf) => setState(() => _selectedSpf = spf),
     );
+  }
+
+  Widget _getStepContent() {
+    if (_currentStep == 0) return _buildStep0();
+    if (_currentStep == 1) return _buildStep1();
+    return _buildStep2();
   }
 }

@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_preferences.dart';
 
 class PreferencesService {
+  static const String _keyName = 'user_name';
   static const String _keySkinType = 'skin_type';
   static const String _keySpf = 'spf';
   static const String _keyOnboardingDone = 'onboarding_done';
@@ -9,6 +10,7 @@ class PreferencesService {
 
   static Future<void> savePreferences(UserPreferences prefs) async {
     final store = await SharedPreferences.getInstance();
+    await store.setString(_keyName, prefs.name);
     await store.setInt(_keySkinType, prefs.skinTypeNumber);
     await store.setInt(_keySpf, prefs.spf);
     await store.setBool(_keyOnboardingDone, true);
@@ -17,6 +19,7 @@ class PreferencesService {
   static Future<UserPreferences> loadPreferences() async {
     final store = await SharedPreferences.getInstance();
     return UserPreferences(
+      name: store.getString(_keyName) ?? 'Friend',
       skinTypeNumber: store.getInt(_keySkinType) ?? 3,
       spf: store.getInt(_keySpf) ?? 30,
     );

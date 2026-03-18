@@ -297,8 +297,12 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     final bool isDark = widget.isDark;
     if (isDark) {
       return BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: Colors.black.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 0.5,
+        ),
       );
     } else {
       const green = Color(0xFF166534); // Forest Green
@@ -516,7 +520,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
         _buildPillButton(
           sw: sw,
           sh: sh,
-          label: 'Applied',
+          label: 'Applied?',
           onPressed: _onApplied,
         ),
       ],
