@@ -68,7 +68,7 @@ class _ShimmerBoxState extends State<_ShimmerBox>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => Container(
+      builder: (context, child) => Container(
         width: widget.width,
         height: widget.height,
         decoration: BoxDecoration(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/uv_data.dart';
 import '../services/uv_cache_service.dart';
 import '../services/preferences_service.dart';
+import '../services/widget_service.dart';
 import '../engines/sunscreen_engines.dart';
 import '../theme/app_theme.dart';
 import 'pressable.dart';
@@ -41,7 +42,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
 
   bool _loaded = false;
   bool _showEscalation = false;
-  Color? _escalationColor = const Color(0xFFEF4444); // Medium Red
+  final Color _escalationColor = const Color(0xFFEF4444); // Medium Red
   bool _isApplying = false;
 
   @override
@@ -143,7 +144,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     if (!mounted) return;
     
     final bool isRunning = _remainingOutdoorSeconds > 0;
-    if (!isRunning || widget.uvData == null || _lockedUV == null) {
+    if (!isRunning || widget.uvData == null) {
       if (_showEscalation) setState(() => _showEscalation = false);
       return;
     }
@@ -234,6 +235,8 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       isOutdoor:         _isOutdoor,
       remainingOutdoorSeconds: _remainingOutdoorSeconds,
     );
+
+    await WidgetService.updateFromCache();
 
     setState(() {
       _sessionsCompleted = newCompleted;
@@ -381,9 +384,9 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
         vertical: sh * 0.008,
       ),
       decoration: BoxDecoration(
-        color: _escalationColor!.withValues(alpha: widget.isDark ? 0.15 : 0.08),
+        color: _escalationColor.withValues(alpha: widget.isDark ? 0.15 : 0.08),
         border: Border.all(
-          color: _escalationColor!.withValues(alpha: 0.2),
+          color: _escalationColor.withValues(alpha: 0.2),
           width: 0.5,
         ),
         borderRadius: BorderRadius.circular(10),
@@ -483,6 +486,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   Widget _buildNotApplied(double sw, double sh) {
     final uv = widget.uvData?.uvIndex ?? 0;
     final isHigh = uv >= 6; // High, Very High, or Extreme
+    final isDark = widget.isDark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,27 +498,39 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
           style: TextStyle(
             fontSize: sh * 0.019,
             fontWeight: FontWeight.w600,
-            color: isHigh ? const Color(0xFFEF4444) : AppTheme.textPrimary(widget.isDark),
+            color: isHigh ? const Color(0xFFEF4444) : AppTheme.textPrimary(isDark),
           ),
         ),
         SizedBox(height: sh * 0.003),
         Text(
-          isHigh 
+          isHigh
               ? 'UV is high right now. Protect your skin before heading out.'
               : 'SPF $_spf · $_totalSessions application${_totalSessions > 1 ? 's' : ''} recommended',
           style: TextStyle(
             fontSize: sh * 0.014,
             fontWeight: isHigh ? FontWeight.w500 : FontWeight.w400,
-            color: isHigh ? const Color(0xFFEF4444).withValues(alpha: 0.8) : AppTheme.bodySecondary(widget.isDark).color,
+            color: isHigh ? const Color(0xFFEF4444).withValues(alpha: 0.8) : AppTheme.bodySecondary(isDark).color,
           ),
         ),
         SizedBox(height: sh * 0.006),
-        Text(
-          'Based on your skin type and current UV index',
-          style: TextStyle(
-            fontSize: sh * 0.013,
-            color: AppTheme.textMuted(widget.isDark),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Based on your skin type and current UV index',
+                style: TextStyle(
+                  fontSize: sh * 0.013,
+                  color: AppTheme.textMuted(isDark).withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+            SizedBox(width: sw * 0.04),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: AppTheme.textMuted(isDark).withValues(alpha: 0.3),
+            ),
+          ],
         ),
         SizedBox(height: sh * 0.016),
         _buildPillButton(

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@drawable/widget_glass_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <!-- Left Side: UV Info -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_vertical">
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="UV INDEX"
+                android:textColor="#88FFFFFF"
+                android:textSize="10sp"
+                android:textAllCaps="true" />
+                
+            <TextView
+                android:id="@+id/widget_uv_index"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--"
+                android:textColor="#FFFFFF"
+                android:textSize="36sp"
+                android:textStyle="bold" />
+                
+            <TextView
+                android:id="@+id/widget_uv_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="High Risk"
+                android:textColor="#EF4444"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Right Side: Timer & Sessions -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.2"
+            android:orientation="vertical"
+            android:gravity="center_vertical|end">
+
+            <TextView
+                android:id="@+id/widget_protection_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Protected"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_timer_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--:--"
+                android:textColor="#88FFFFFF"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/widget_sessions_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1/5 Sessions"
+                android:textColor="#44FFFFFF"
+                android:textSize="10sp"
+                android:layout_marginTop="4dp" />
+                
+            <TextView
+                android:id="@+id/widget_burn_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Burn in 25m"
+                android:textColor="#FFBB33"
+                android:textSize="10sp"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>
