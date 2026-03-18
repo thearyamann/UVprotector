@@ -42,6 +42,6 @@ class PreferencesService {
 
   static Future<bool> loadIsDarkMode() async {
     final store = await SharedPreferences.getInstance();
-    return store.getBool(_keyDarkMode) ?? false;
+    return store.getBool(_keyDarkMode) ?? true;
   }
 }

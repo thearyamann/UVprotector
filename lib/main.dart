@@ -13,7 +13,7 @@ void main() async {
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor:          Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light,
   ));
 
   try {
@@ -62,6 +62,10 @@ class _UVProtectorAppState extends State<UVProtectorApp> {
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeController.of(context).isDark;
+    
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    ));
 
     return AnimatedTheme(
       duration: const Duration(milliseconds: 400),

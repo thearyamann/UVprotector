@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/uv_data.dart';
 import '../theme/app_theme.dart';
+import 'skeleton_loader.dart';
 import 'pressable.dart';
 
 /// A single routine product with its own label and recommended SPF.
@@ -309,17 +310,6 @@ class _DailyRoutineCardState extends State<DailyRoutineCard> {
   }
 
   Widget _buildLoading(double sh, bool isDark) {
-    return Row(children: [
-      SizedBox(
-        width: sh * 0.02,
-        height: sh * 0.02,
-        child: CircularProgressIndicator(
-          strokeWidth: 1.5,
-          color: AppTheme.textMuted(isDark),
-        ),
-      ),
-      const SizedBox(width: 10),
-      Text('Loading...', style: AppTheme.bodySecondary(isDark)),
-    ]);
+    return SkeletonDailyRoutine(isDark: isDark);
   }
 }

@@ -76,7 +76,7 @@ class UVIndexCard extends StatelessWidget {
                       child: Container(
                         width: 9, height: 9,
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1a2a3a) : Colors.white,
+                          color: Colors.white,
                           shape: BoxShape.circle,
                           border: Border.all(color: color, width: 2),
                         ),

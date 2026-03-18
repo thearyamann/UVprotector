@@ -222,6 +222,10 @@ class SkeletonHomeScreen extends StatelessWidget {
 
         SizedBox(height: gap),
 
+        SkeletonDailyRoutine(isDark: isDark),
+
+        SizedBox(height: gap),
+
         card(
           child: Row(
             children: [
@@ -241,6 +245,61 @@ class SkeletonHomeScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class SkeletonDailyRoutine extends StatelessWidget {
+  final bool isDark;
+
+  const SkeletonDailyRoutine({super.key, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final sw = MediaQuery.of(context).size.width;
+    final pad = sw * 0.044;
+
+    Widget sb(double w, double h, {double r = 8}) =>
+        SkeletonBox(width: w, height: h, radius: r, isDark: isDark);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(pad),
+      decoration: AppTheme.cardDecoration(isDark),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(children: [
+                sb(14, 14, r: 4),
+                const SizedBox(width: 6),
+                sb(80, 10),
+              ]),
+              sb(60, 10),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...List.generate(4, (i) {
+            final widths = [0.45, 0.35, 0.5, 0.4];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  sb(22, 22, r: 7),
+                  const SizedBox(width: 12),
+                  sb(sw * widths[i], 14, r: 4),
+                  const Spacer(),
+                  sb(44, 16, r: 8),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 10),
+          sb(double.infinity, 3, r: 2),
+        ],
+      ),
     );
   }
 }
