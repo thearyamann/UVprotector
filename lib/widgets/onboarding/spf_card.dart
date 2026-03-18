@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/theme_controller.dart';
 
 class SpfOption {
   final int value;
@@ -69,21 +71,21 @@ class SpfCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = ThemeController.of(context).isDark;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
         decoration: BoxDecoration(
-          color: isSelected
-            ? Colors.white.withValues(alpha: 0.85)
-            : Colors.white.withValues(alpha: 0.55),
+          color: AppTheme.cardBg(isDark),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF3B7DD8)
-              : Colors.white.withValues(alpha: 0.85),
-            width: isSelected ? 2 : 0.5,
+                ? Colors.white
+                : AppTheme.cardBorder(isDark),
+            width: isSelected ? 2.0 : 0.8,
           ),
         ),
         child: Column(
@@ -100,18 +102,18 @@ class SpfCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               option.label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF1a2332),
+                color: AppTheme.textPrimary(isDark),
               ),
             ),
             const SizedBox(height: 4),
             Text(
               option.subtitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: Color(0xFF6a7a8a),
+                color: AppTheme.bodySecondary(isDark).color,
               ),
             ),
           ],

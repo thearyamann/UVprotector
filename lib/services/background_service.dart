@@ -1,6 +1,9 @@
 import 'package:workmanager/workmanager.dart';
 import 'uv_cache_service.dart';
 import 'uv_controller.dart';
+import 'location_service.dart';
+import 'weather_service.dart';
+import 'geocoding_service.dart';
 import '../services/preferences_service.dart';
 
 const String kUVRefreshTask = 'uv_refresh_task';
@@ -11,11 +14,30 @@ void callbackDispatcher() {
     if (taskName == kUVRefreshTask) {
       try {
         final prefs      = await PreferencesService.loadPreferences();
+        final location   = await LocationService().getCurrentLocation();
+        final city       = await GeocodingService.getCityName(location.latitude, location.longitude);
+        
+        final weatherResult = await WeatherService.fetchWeatherAndPeak(
+          latitude:  location.latitude,
+          longitude: location.longitude,
+          cityName:  city,
+        );
+
         final controller = UVController();
         final data       = await controller.getCurrentUVData(
+          uvIndex:   weatherResult.currentUV,
+          latitude:  location.latitude,
+          longitude: location.longitude,
           skinTypeNumber: prefs.skinTypeNumber,
         );
-        await UVCacheService.saveUVData(data);
+        
+        // Preserve peak hours from the weather result
+        final finalData = data.copyWith(
+          peakStart: weatherResult.peakStart,
+          peakEnd:   weatherResult.peakEnd,
+        );
+
+        await UVCacheService.saveUVData(finalData);
       } catch (_) {}
     }
     return Future.value(true);

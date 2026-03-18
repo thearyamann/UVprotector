@@ -23,12 +23,16 @@ class ThemeController extends ChangeNotifier {
 
 class _ThemeControllerScope extends InheritedWidget {
   final ThemeController controller;
+  final bool isDark;
 
-  const _ThemeControllerScope({required this.controller, required super.child});
+  const _ThemeControllerScope({
+    required this.controller,
+    required this.isDark,
+    required super.child,
+  });
 
   @override
-  bool updateShouldNotify(_ThemeControllerScope old) =>
-      controller != old.controller;
+  bool updateShouldNotify(_ThemeControllerScope old) => isDark != old.isDark;
 }
 
 class ThemeControllerProvider extends StatefulWidget {
@@ -65,6 +69,7 @@ class _ThemeControllerProviderState extends State<ThemeControllerProvider> {
   Widget build(BuildContext context) {
     return _ThemeControllerScope(
       controller: widget.controller,
+      isDark: widget.controller.isDark,
       child: widget.child,
     );
   }

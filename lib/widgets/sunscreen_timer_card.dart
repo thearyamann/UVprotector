@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+
 import '../models/uv_data.dart';
 import '../services/uv_cache_service.dart';
 import '../services/preferences_service.dart';
@@ -34,8 +35,13 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   double _lockedUV        = 0;
   DateTime? _sessionStartedAt;
 
+  // Two-Speed Tracking
+  bool _isOutdoor = true;
+  double _remainingOutdoorSeconds = 0.0;
+
   bool _loaded = false;
   bool _showEscalationAlert = false;
+  bool _isApplying = false;
 
   @override
   void initState() {
@@ -43,12 +49,25 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     _init();
   }
 
+  int get _calculatedTotalSessions {
+    final uv = widget.uvData?.uvIndex ?? 0;
+    final baseTotal = SunscreenEngine.getTotalApplications(_skinType, uv);
+    if (baseTotal == 0) return 0;
+    if (_isOutdoor) return baseTotal;
+    
+    // Indoors, sunscreen lasts 3x longer so divide requirement
+    // E.g., if base is 3, indoor needs 1. If base is 4, indoor needs 2.
+    return (baseTotal / 3.0).ceil();
+  }
+
   @override
   void didUpdateWidget(SunscreenTimerCard old) {
     super.didUpdateWidget(old);
     if (widget.uvData != old.uvData && widget.uvData != null) {
-      // ── LOCK-AT-FIRST-APPLY: do NOT recalculate timer ──
-      // Only check for escalation alert if session is active
+      final newTotal = _calculatedTotalSessions;
+      if (newTotal != _totalSessions) {
+        setState(() => _totalSessions = newTotal);
+      }
       _checkEscalation();
     }
   }
@@ -66,8 +85,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     final uv      = widget.uvData?.uvIndex ?? 0;
 
     if (session == null) {
-      // No session today — show pre-apply state with LIVE UV values
-      final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
+      final total   = _calculatedTotalSessions;
       final reapply = SunscreenEngine.getReapplyMinutes(uv);
       _sessionsCompleted = 0;
       _totalSessions     = total;
@@ -76,71 +94,135 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       _secondsLeft       = 0;
       _lockedUV          = 0;
       _sessionStartedAt  = null;
+      _isOutdoor         = true;
+      _remainingOutdoorSeconds = 0;
       return;
     }
 
-    // Session exists — use LOCKED values (never recalculate from live UV)
     _sessionsCompleted = session['sessionsCompleted'] as int;
-    _totalSessions     = session['lockedTotalSessions'] as int? ?? session['totalSessions'] as int;
+    _isOutdoor         = session['isOutdoor'] as bool? ?? true;
+    _totalSessions     = _calculatedTotalSessions;
     _reapplyMinutes    = session['lockedReapplyMinutes'] as int? ?? session['reapplyMinutes'] as int;
     _spf               = session['spf'] as int;
     _lockedUV          = (session['lockedUV'] as num?)?.toDouble() ?? uv;
 
-    final startedAt = DateTime.fromMillisecondsSinceEpoch(
-        session['sessionStartedAt'] as int);
-    final expiresAt = startedAt.add(Duration(minutes: _reapplyMinutes));
-    final now       = DateTime.now();
+    // Calculate how much real time elapsed since last saved (cache update)
+    final lastUpdatedAt = session['lastUpdatedAt'] as int? ?? session['sessionStartedAt'] as int;
+    final elapsedSec = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(lastUpdatedAt)).inSeconds.toDouble();
+    
+    // Calculate new remaining capacity
+    final rate = _isOutdoor ? 1.0 : (1.0 / 3.0);
+    double remaining = (session['remainingOutdoorSeconds'] as num?)?.toDouble() ?? (_reapplyMinutes * 60.0);
+    remaining -= (elapsedSec * rate);
+    if (remaining < 0) remaining = 0;
 
+    _remainingOutdoorSeconds = remaining;
+    _secondsLeft = (_remainingOutdoorSeconds / rate).toInt();
+    _totalSeconds = (_reapplyMinutes * 60.0 / rate).toInt();
+
+    final startedAt = DateTime.fromMillisecondsSinceEpoch(session['sessionStartedAt'] as int);
     _sessionStartedAt = startedAt;
-    _totalSeconds     = _reapplyMinutes * 60;
 
-    if (_sessionsCompleted >= _totalSessions) {
-      _secondsLeft = 0;
-      return;
+    if (_sessionsCompleted >= _totalSessions && _sessionsCompleted > 0) {
+      // Keep it as 0 if they're actually fully done and the required total dropped.
+      // But we handled isRunning prioritizing above allDone in build() so no worries.
     }
 
-    if (now.isBefore(expiresAt)) {
-      _secondsLeft = expiresAt.difference(now).inSeconds;
+    if (_remainingOutdoorSeconds > 0) {
       _startTicker();
     } else {
       _secondsLeft = 0;
     }
+
+    // Auto-check escalation on load
+    _checkEscalation();
   }
 
-  /// Check if live UV has risen significantly above locked UV.
-  /// If so, show a one-time escalation alert — but do NOT change timer.
   void _checkEscalation() {
-    if (_lockedUV <= 0 || _sessionsCompleted == 0) return;
-    final liveUV = widget.uvData?.uvIndex ?? 0;
-    if (liveUV >= _lockedUV + 2 && !_showEscalationAlert) {
-      if (mounted) setState(() => _showEscalationAlert = true);
+    if (!mounted) return;
+    
+    final bool isRunning = _remainingOutdoorSeconds > 0;
+    if (!isRunning || widget.uvData == null || _lockedUV == null) {
+      if (_showEscalationAlert) setState(() => _showEscalationAlert = false);
+      return;
+    }
+
+    final double currentUV = widget.uvData!.uvIndex;
+    
+    // User requirement:
+    // Only show if UV is High (>= 6) AND timer has less than 10 min left (< 600 sec)
+    // AND UV has actually increased since initial application.
+    final bool isHigh = currentUV >= 6.0;
+    final bool isLowTimer = _secondsLeft <= 600;
+    final bool hasIncreased = currentUV > (_lockedUV + 0.5);
+
+    final bool shouldShow = isHigh && isLowTimer && hasIncreased;
+
+    if (_showEscalationAlert != shouldShow) {
+      setState(() => _showEscalationAlert = shouldShow);
     }
   }
-
+  
   void _dismissEscalation() {
     setState(() => _showEscalationAlert = false);
   }
-
+  
   void _startTicker() {
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      if (_secondsLeft <= 0) {
+      if (_remainingOutdoorSeconds <= 0) {
         _ticker?.cancel();
-        setState(() => _secondsLeft = 0);
+        setState(() {
+          _remainingOutdoorSeconds = 0;
+          _secondsLeft = 0;
+        });
         return;
       }
-      setState(() => _secondsLeft--);
+      
+      final rate = _isOutdoor ? 1.0 : (1.0 / 3.0);
+      setState(() {
+        _remainingOutdoorSeconds -= rate;
+        _secondsLeft = (_remainingOutdoorSeconds / rate).toInt();
+      });
+      _checkEscalation();
     });
   }
 
+  Future<void> _toggleMode(bool toOutdoor) async {
+    if (_isOutdoor == toOutdoor) return;
+    
+    setState(() {
+      _isOutdoor = toOutdoor;
+      final rate = _isOutdoor ? 1.0 : (1.0 / 3.0);
+      _secondsLeft = (_remainingOutdoorSeconds / rate).toInt();
+      _totalSeconds = (_reapplyMinutes * 60.0 / rate).toInt();
+      _totalSessions = _calculatedTotalSessions;
+    });
+
+    await UVCacheService.updateSessionMode(
+      isOutdoor: _isOutdoor,
+      remainingOutdoorSeconds: _remainingOutdoorSeconds,
+    );
+  }
+
   Future<void> _onApplied() async {
+    if (_isApplying) return;
+    setState(() => _isApplying = true);
+    
+    // Brief haptic delay for the loading animation
+    await Future.delayed(const Duration(milliseconds: 600));
+    
     final uv = widget.uvData?.uvIndex ?? 0;
 
-    // Calculate from current UV — these get LOCKED for the rest of the day
-    final total   = SunscreenEngine.getTotalApplications(_skinType, uv);
+    // Reset speed to outdoor upon application mostly as a safe default.
+    _isOutdoor = true;
+
+    final total   = _calculatedTotalSessions;
     final reapply = SunscreenEngine.getReapplyMinutes(uv);
     final newCompleted = _sessionsCompleted + 1;
+
+    _remainingOutdoorSeconds = reapply * 60.0;
 
     await UVCacheService.saveSession(
       sessionsCompleted: newCompleted,
@@ -148,17 +230,21 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
       reapplyMinutes:    reapply,
       spf:               _spf,
       lockedUV:          uv,
+      isOutdoor:         _isOutdoor,
+      remainingOutdoorSeconds: _remainingOutdoorSeconds,
     );
 
     setState(() {
       _sessionsCompleted = newCompleted;
       _totalSessions     = total;
       _reapplyMinutes    = reapply;
-      _totalSeconds      = reapply * 60;
-      _secondsLeft       = reapply * 60;
+      final rate = _isOutdoor ? 1.0 : (1.0 / 3.0);
+      _secondsLeft       = (_remainingOutdoorSeconds / rate).toInt();
+      _totalSeconds      = (_reapplyMinutes * 60.0 / rate).toInt();
       _lockedUV          = uv;
       _sessionStartedAt  = DateTime.now();
       _showEscalationAlert = false;
+      _isApplying = false;
     });
 
     if (newCompleted < total) _startTicker();
@@ -197,7 +283,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
 
   String get _expiresDisplay {
     if (_sessionStartedAt == null) return '';
-    return _fmt(_sessionStartedAt!.add(Duration(minutes: _reapplyMinutes)));
+    return _fmt(DateTime.now().add(Duration(seconds: _secondsLeft))); // dynamic expires
   }
 
   Color get _progressColor {
@@ -206,11 +292,36 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     return const Color(0xFFDC2626);
   }
 
-  BoxDecoration get _greenBtn => BoxDecoration(
-    color: AppTheme.ctaBg(widget.isDark),
-    border: Border.all(color: AppTheme.ctaBorder(widget.isDark), width: 0.5),
-    borderRadius: BorderRadius.circular(13),
-  );
+  BoxDecoration get _btnDecoration {
+    final bool isDark = widget.isDark;
+    if (isDark) {
+      return BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+          width: 0.8,
+        ),
+      );
+    } else {
+      const green = Color(0xFF166534); // Forest Green
+      return BoxDecoration(
+        color: green.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: green,
+          width: 1.0,
+        ),
+      );
+    }
+  }
+
+  Color get _btnTextColor {
+    final bool isDark = widget.isDark;
+    return isDark 
+        ? AppTheme.textPrimary(isDark) 
+        : const Color(0xFF166534);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -219,10 +330,11 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     final uv  = widget.uvData?.uvIndex ?? -1;
     final isLowUV = uv >= 0 && uv <= 2;
     final allDone = _sessionsCompleted >= _totalSessions && _totalSessions > 0;
-    final notStarted  = _sessionsCompleted == 0 && _secondsLeft == 0;
-    final isExpired   = _secondsLeft <= 0 && _sessionsCompleted < _totalSessions && _sessionsCompleted > 0;
-    final isRunning   = _secondsLeft > 0 && _sessionsCompleted < _totalSessions;
-    final firstApply  = notStarted && !isLowUV && _totalSessions > 0;
+    final isExpired   = _remainingOutdoorSeconds <= 0 && _sessionsCompleted < _totalSessions && _sessionsCompleted > 0;
+    final isRunning   = _remainingOutdoorSeconds > 0;
+    // Strictly not started if no applications and timer not running
+    final isNotStarted = _sessionsCompleted == 0 && !isRunning;
+    final firstApply  = isNotStarted && !isLowUV && _totalSessions > 0;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
@@ -236,10 +348,10 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
               children: [
                 if (isLowUV)
                   _buildLowUV(sw, sh)
-                else if (allDone)
-                  _buildAllDone(sw, sh)
                 else if (isRunning)
                   _buildRunning(sw, sh)
+                else if (allDone)
+                  _buildAllDone(sw, sh)
                 else if (isExpired)
                   _buildExpired(sw, sh)
                 else if (firstApply)
@@ -257,7 +369,10 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
     );
   }
 
+
+
   Widget _buildEscalationAlert(double sw, double sh) {
+    // ... [Original code] ...
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
@@ -365,52 +480,89 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   }
 
   Widget _buildNotApplied(double sw, double sh) {
+    final uv = widget.uvData?.uvIndex ?? 0;
+    final isHigh = uv >= 6; // High, Very High, or Extreme
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeader(sw, sh),
-        SizedBox(height: sh * 0.012),
+        SizedBox(height: sh * 0.022),
         Text(
-          'Applied today?',
+          isHigh ? 'High UV — Apply Sunscreen!' : 'Ready for the sun?',
           style: TextStyle(
             fontSize: sh * 0.019,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimary(widget.isDark),
+            fontWeight: FontWeight.w600,
+            color: isHigh ? const Color(0xFFDC2626) : AppTheme.textPrimary(widget.isDark),
           ),
         ),
         SizedBox(height: sh * 0.003),
         Text(
-          'SPF $_spf · $_totalSessions application${_totalSessions > 1 ? 's' : ''} needed today',
-          style: AppTheme.bodySecondary(widget.isDark),
+          isHigh 
+              ? 'UV is high right now. Protect your skin before heading out.'
+              : 'SPF $_spf · $_totalSessions application${_totalSessions > 1 ? 's' : ''} recommended',
+          style: TextStyle(
+            fontSize: sh * 0.014,
+            fontWeight: isHigh ? FontWeight.w500 : FontWeight.w400,
+            color: isHigh ? const Color(0xFFDC2626).withValues(alpha: 0.8) : AppTheme.bodySecondary(widget.isDark).color,
+          ),
         ),
-        SizedBox(height: sh * 0.003),
+        SizedBox(height: sh * 0.006),
         Text(
-          'Based on your skin type and UV index',
+          'Based on your skin type and current UV index',
           style: TextStyle(
             fontSize: sh * 0.013,
             color: AppTheme.textMuted(widget.isDark),
           ),
         ),
         SizedBox(height: sh * 0.016),
-        Pressable(
-          onTap: _onApplied,
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: sh * 0.016),
-            decoration: _greenBtn,
-            child: Center(
-              child: Text(
-                'I applied sunscreen',
-                style: TextStyle(
-                  fontSize: sh * 0.018,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.ctaText(widget.isDark),
-                ),
-              ),
-            ),
-          ),
+        _buildPillButton(
+          sw: sw,
+          sh: sh,
+          label: 'I applied sunscreen',
+          onPressed: _onApplied,
         ),
       ],
+    );
+  }
+
+  Widget _buildPillButton({
+    required double sw,
+    required double sh,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    final accent = _btnTextColor;
+    return Pressable(
+      onTap: onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(
+          horizontal: sw * 0.05,
+          vertical: sh * 0.016,
+        ),
+        decoration: _btnDecoration,
+        child: Center(
+          child: _isApplying
+              ? SizedBox(
+                width: sh * 0.022,
+                height: sh * 0.022,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: accent,
+                ),
+              )
+              : Text(
+                label,
+                style: TextStyle(
+                  color: accent,
+                  fontSize: sh * 0.017,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+        ),
+      ),
     );
   }
 
@@ -479,6 +631,87 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
                     color: AppTheme.textMuted(widget.isDark))),
           ],
         ),
+        SizedBox(height: sh * 0.014),
+        
+        // ── Indoor / Outdoor Toggle ──
+        Container(
+          width: double.infinity,
+          height: sh * 0.046,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: widget.isDark ? AppTheme.progressTrack(widget.isDark) : const Color(0xFFF1F4F9),
+            borderRadius: BorderRadius.circular(10),
+            border: widget.isDark ? null : Border.all(
+              color: AppTheme.cardBorder(widget.isDark).withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _toggleMode(false),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: !_isOutdoor ? AppTheme.cardBg(widget.isDark) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.home_rounded,
+                          size: sh * 0.022,
+                          color: !_isOutdoor ? AppTheme.ctaText(widget.isDark) : AppTheme.textMuted(widget.isDark),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Indoor',
+                          style: TextStyle(
+                            fontSize: sh * 0.014,
+                            fontWeight: !_isOutdoor ? FontWeight.w600 : FontWeight.w500,
+                            color: !_isOutdoor ? AppTheme.ctaText(widget.isDark) : AppTheme.textMuted(widget.isDark),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _toggleMode(true),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _isOutdoor ? AppTheme.cardBg(widget.isDark) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.wb_sunny_rounded,
+                          size: sh * 0.021,
+                          color: _isOutdoor ? const Color(0xFFF59E0B) : AppTheme.textMuted(widget.isDark),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Outdoor',
+                          style: TextStyle(
+                            fontSize: sh * 0.014,
+                            fontWeight: _isOutdoor ? FontWeight.w600 : FontWeight.w500,
+                            color: _isOutdoor ? const Color(0xFFF59E0B) : AppTheme.textMuted(widget.isDark),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -535,26 +768,11 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
           ),
         ),
         SizedBox(height: sh * 0.016),
-        Pressable(
-          onTap: _onApplied,
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: sh * 0.016),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDC2626),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Center(
-              child: Text(
-                'I reapplied',
-                style: TextStyle(
-                  fontSize: sh * 0.018,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
+        _buildPillButton(
+          sw: sw,
+          sh: sh,
+          label: 'I reapplied',
+          onPressed: _onApplied,
         ),
       ],
     );

@@ -4,25 +4,25 @@ class AppTheme {
   AppTheme._();
 
   static const List<Color> lightGradient = [
-   Color(0xFFE0D0BC),  // stronger peach
-  Color(0xFFE0E7F2),  // blue-grey (unchanged)
-  Color(0xFFFBFBFB),  // blue (unchanged)
-  Color(0xFFCFE3D6),  // stronger mint// mint   // more mint
+   Color(0xFFE0D0BC), 
+  Color(0xFFE0E7F2),  
+  Color(0xFFF5F5F5),  
+  Color(0xFFCFE3D6),  
   ];
 
   static const List<Color> darkGradient = [ 
-    Color(0xFF1a0f2e),
-    Color(0xFF0d1f3c),
-    Color(0xFF0a2240),
-    Color(0xFF0d2518),
+    Color(0xFF181818), // Pure Black
+    Color(0xFF1e1e1e), // Very Dark Grey
+    Color(0xFF1e1e1e), 
+    Color(0xFF1e1e1e),
   ];
 
   static Color cardBg(bool isDark) => isDark
-      ? const Color(0x0FFFFFFF)
+      ? const Color(0x1AFFFFFF) 
       : const Color(0xB8FFFFFF);
 
   static Color cardBorder(bool isDark) => isDark
-      ? const Color(0x20FFFFFF)
+      ? const Color(0x14FFFFFF) 
       : const Color(0xE0FFFFFF);
 
   static Color skeletonBase(bool isDark) => isDark
@@ -63,8 +63,8 @@ static BoxDecoration cardDecoration(bool isDark) => BoxDecoration(
       : const Color(0xFF8a9aaa);
 
   static Color brandBlue(bool isDark) => isDark
-      ? const Color(0xFF60A5FA)
-      : const Color(0xFF3B7DD8);
+      ? const Color(0xFFFFFFFF)
+      : const Color(0xFF000000);
 
   // Compatibility alias used by existing widget code.
   static Color brandGreen(bool isDark) => ctaText(isDark);

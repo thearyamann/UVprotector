@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/skin_type.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/theme_controller.dart';
 
 
 
@@ -29,21 +31,21 @@ class SkinTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = ThemeController.of(context).isDark;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
         decoration: BoxDecoration(
-          color: isSelected
-            ? Colors.white.withValues(alpha: 0.85)
-            : Colors.white.withValues(alpha: 0.55),
+          color: AppTheme.cardBg(isDark),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF3B7DD8)
-              : Colors.white.withValues(alpha: 0.85),
-            width: isSelected ? 2 : 0.5,
+                ? Colors.white
+                : AppTheme.cardBorder(isDark),
+            width: isSelected ? 2.0 : 0.8,
           ),
         ),
         child: Column(
@@ -57,21 +59,15 @@ class SkinTypeCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'Type ${skinType.type}',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1a2332),
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              // Show just the first word e.g. "Very" or "Fair"
-              skinType.description.split('—').first.trim().split(' ').first,
-              style: const TextStyle(
-                fontSize: 9,
-                color: Color(0xFF6a7a8a),
+              // Show descriptive skin color name
+              skinType.description.split('—').first.trim(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: AppTheme.textPrimary(isDark),
               ),
             ),
           ],

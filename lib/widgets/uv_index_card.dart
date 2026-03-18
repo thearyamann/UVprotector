@@ -90,7 +90,11 @@ class UVIndexCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Peak:', style: TextStyle(fontSize: 9, color: AppTheme.textMuted(isDark))),
-                  Text('12:00–15:00', style: TextStyle(
+                  Text(
+                    uvData?.peakStart != null && uvData?.peakEnd != null
+                        ? '${uvData!.peakStart}–${uvData!.peakEnd}'
+                        : '—',
+                    style: TextStyle(
                     fontSize: 9,
                     color: AppTheme.textSecondary(isDark),
                     fontWeight: FontWeight.w500,

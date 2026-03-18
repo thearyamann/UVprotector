@@ -56,6 +56,8 @@ class UVCacheService {
     required int reapplyMinutes,
     required int spf,
     required double lockedUV,
+    required bool isOutdoor,
+    required double remainingOutdoorSeconds,
   }) async {
     final store = await SharedPreferences.getInstance();
     final now   = DateTime.now();
@@ -78,7 +80,27 @@ class UVCacheService {
       'lockedUV':            effectiveLockedUV,
       'lockedReapplyMinutes': effectiveReapply,
       'lockedTotalSessions':  effectiveTotal,
+      'isOutdoor':           isOutdoor,
+      'remainingOutdoorSeconds': remainingOutdoorSeconds,
+      'lastUpdatedAt':       now.millisecondsSinceEpoch,
     }));
+  }
+
+  /// Update just the timer mode fields (used when toggling Indoor/Outdoor)
+  static Future<void> updateSessionMode({
+    required bool isOutdoor,
+    required double remainingOutdoorSeconds,
+  }) async {
+    final store = await SharedPreferences.getInstance();
+    final raw = store.getString(_keySessionData);
+    if (raw == null) return;
+    
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    map['isOutdoor'] = isOutdoor;
+    map['remainingOutdoorSeconds'] = remainingOutdoorSeconds;
+    map['lastUpdatedAt'] = DateTime.now().millisecondsSinceEpoch;
+    
+    await store.setString(_keySessionData, jsonEncode(map));
   }
 
   static Future<Map<String, dynamic>?> loadSessionData() async {

@@ -108,7 +108,7 @@ class WeatherCard extends StatelessWidget {
             height: 1,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 8),
         Row(
           children: [
             Icon(_icon(condition), size: 12, color: color),

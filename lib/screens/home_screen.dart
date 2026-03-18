@@ -84,21 +84,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() { _isLoading = true; _errorMessage = null; });
 
     try {
-      // ⚠️ TEMP: Cache bypass for testing — REMOVE AFTER TESTING
-      // final cached = await UVCacheService.loadCachedUVData();
-      // if (cached != null && !await UVCacheService.shouldRefresh()) {
-      //   if (mounted) setState(() { _uvData = cached; _isLoading = false; });
-      //   _fetchWeather(cached.latitude, cached.longitude);
-      //   return;
-      // }
-
-      final uvData = await _uvController.getCurrentUVData(
-        skinTypeNumber: _selectedSkinType.type,
-      );
-      await UVCacheService.saveUVData(uvData);
-      if (mounted) setState(() => _uvData = uvData);
-      _fetchWeather(uvData.latitude, uvData.longitude);
-
+      final pos = await LocationService().getCurrentLocation();
+      await _fetchConsolidatedData(pos.latitude, pos.longitude);
     } on LocationException catch (e) {
       if (mounted) setState(() => _errorMessage = e.message);
       if (e.type == LocationErrorType.permissionPermanentlyDenied) {
@@ -115,16 +102,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _fetchWeather(double? lat, double? lng) async {
-    if (lat == null || lng == null) return;
+  Future<void> _fetchConsolidatedData(double lat, double lng) async {
     try {
-      final city    = await GeocodingService.getCityName(lat, lng);
-      final weather = await WeatherService.fetchWeather(
+      final city   = await GeocodingService.getCityName(lat, lng);
+      final result = await WeatherService.fetchWeatherAndPeak(
         latitude: lat, longitude: lng, cityName: city,
       );
-      if (mounted) setState(() => _weatherData = weather);
-    } catch (_) {}
+      
+      final uvData = await _uvController.getCurrentUVData(
+        uvIndex: result.currentUV,
+        latitude: lat,
+        longitude: lng,
+        skinTypeNumber: _selectedSkinType.type,
+      );
+
+      await UVCacheService.saveUVData(uvData);
+
+      if (mounted) {
+        setState(() {
+          _weatherData = result.weather;
+          _uvData = UVData(
+            uvIndex: uvData.uvIndex,
+            riskLevel: uvData.riskLevel,
+            burnTimeMinutes: uvData.burnTimeMinutes,
+            exposureAdvice: uvData.exposureAdvice,
+            spfRecommendation: uvData.spfRecommendation,
+            reapplyMinutes: uvData.reapplyMinutes,
+            timestamp: uvData.timestamp,
+            latitude: uvData.latitude,
+            longitude: uvData.longitude,
+            peakStart: result.peakStart,
+            peakEnd: result.peakEnd,
+          );
+        });
+      }
+    } catch (_) {
+      // Data fetch errored - usually handled by showing previously cached data 
+    }
   }
+
+  // Removed _fetchWeather in favor of _fetchConsolidatedData
 
   void _showSettingsDialog() {
     showDialog(
@@ -178,22 +195,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: _loadData,
-            color: AppTheme.brandBlue(isDark),
-            backgroundColor:
-                isDark ? const Color(0xFF1a2332) : Colors.white,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.only(
-                left:   screenWidth * 0.044,
-                right:  screenWidth * 0.044,
-                bottom: bottomPad,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+        body: RefreshIndicator(
+          onRefresh: _loadData,
+          color: AppTheme.brandBlue(isDark),
+          backgroundColor:
+              isDark ? const Color(0xFF1a2332) : Colors.white,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              left:   screenWidth * 0.044,
+              right:  screenWidth * 0.044,
+              top:    MediaQuery.of(context).padding.top + 8,
+              bottom: bottomPad + MediaQuery.of(context).padding.bottom + 10,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                   _buildHeader(screenHeight, isDark),
                   _buildGreeting(screenHeight, isDark),
 
@@ -241,9 +258,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             style: const TextStyle(
                                 color: Colors.red, fontSize: 12)),
                       ),
-                  ],
-                ],
-              ),
+              ],
+              ],
             ),
           ),
         ),

@@ -6,6 +6,8 @@ import '../widgets/onboarding/step_indicator.dart';
 import '../widgets/onboarding/skin_type_grid.dart';
 import '../widgets/onboarding/spf_grid.dart';
 import '../widgets/onboarding/onboarding_cta.dart';
+import '../theme/app_theme.dart';
+import '../theme/theme_controller.dart';
 import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -52,12 +54,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = ThemeController.of(context).isDark;
+
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFDDEEFF), Color(0xFFE8F0F7), Color(0xFFD8EEE0)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark ? AppTheme.darkGradient : AppTheme.lightGradient,
         ),
       ),
       child: Scaffold(
@@ -87,8 +91,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         alignment: Alignment.topCenter,
                         children: [
                           ...previousChildren,
-
-                          ?currentChild,
+                          if (currentChild != null) currentChild,
                         ],
                       ),
                       child: _currentStep == 0 ? _buildStep1() : _buildStep2(),
@@ -114,26 +117,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildHeader() {
+    final bool isDark = ThemeController.of(context).isDark;
     final isStep1 = _currentStep == 0;
+    
+    final accentColor = isStep1 
+        ? const Color(0xFF3B7DD8) 
+        : const Color(0xFF166534);
+
     return Column(
       children: [
         Container(
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: isStep1
-                ? const Color(0xFF3B7DD8).withValues(alpha: 0.12)
-                : const Color(0xFF6AAF2E).withValues(alpha: 0.12),
+            color: accentColor.withValues(alpha: 0.12),
             border: Border.all(
-              color: isStep1
-                  ? const Color(0xFF3B7DD8).withValues(alpha: 0.2)
-                  : const Color(0xFF6AAF2E).withValues(alpha: 0.2),
+              color: accentColor.withValues(alpha: 0.2),
             ),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Icon(
             isStep1 ? Icons.wb_sunny_outlined : Icons.shield_outlined,
-            color: isStep1 ? const Color(0xFF3B7DD8) : const Color(0xFF6AAF2E),
+            color: accentColor,
             size: 24,
           ),
         ),
@@ -143,10 +148,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Text(
             isStep1 ? 'Your skin type?' : 'Your sunscreen?',
             key: ValueKey(_currentStep),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1a2332),
+              color: AppTheme.textPrimary(isDark),
               letterSpacing: -0.5,
             ),
           ),
@@ -159,10 +164,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ? 'Helps calculate your exact burn time'
                 : 'Used to calculate your reapply timer',
             key: ValueKey('sub$_currentStep'),
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF6a7a8a),
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.textSecondary(isDark),
               height: 1.5,
+              fontWeight: FontWeight.w400,
             ),
             textAlign: TextAlign.center,
           ),
