@@ -21,6 +21,7 @@ import '../widgets/daily_routine_card.dart';
 import '../widgets/pressable.dart';
 import '../services/location_service.dart';
 import '../services/preferences_service.dart';
+import '../services/widget_service.dart';
 import 'onboarding_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -121,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
 
       await UVCacheService.saveUVData(uvData);
+      await WidgetService.updateFromCache(); // Instantly push live data to widgets
 
       if (mounted) {
         setState(() {

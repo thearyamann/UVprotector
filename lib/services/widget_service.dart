@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:home_widget/home_widget.dart';
 import 'uv_cache_service.dart';
+import 'preferences_service.dart';
 
 class WidgetService {
   static const String _groupId = 'group.com.thearyamann.uvprotector';
@@ -16,42 +17,56 @@ class WidgetService {
 
       bool timerRunning = false;
       DateTime? timerEndTime;
-      String sessionsText = '0/0';
-      String protectionStatus = 'Not Applied';
-      String burnTime = '${uvData.burnTimeMinutes} mins';
+      String burnTimeMins = uvData.burnTimeMinutes.round().toString();
+      bool isLowUV = uvData.uvIndex < 3;
+
+      final prefs = await PreferencesService.loadPreferences();
+
+      String protectionStatus = 'Unprotected';
+      int sessionsCompleted = 0;
+      int sessionsTotal = 0; // Default to 0
 
       if (session != null) {
-        final completed = session['sessionsCompleted'] as int;
-        final total = session['lockedTotalSessions'] as int? ?? session['totalSessions'] as int;
-        final lastApplied = session['lastAppliedAt'] as int;
-        final reapplyMins = session['lockedReapplyMinutes'] as int? ?? session['reapplyMinutes'] as int;
+        sessionsCompleted = session['sessionsCompleted'] as int? ?? 0;
+        sessionsTotal = session['lockedTotalSessions'] as int? ?? session['totalSessions'] as int? ?? 0;
+        final lastApplied = session['lastAppliedAt'] as int? ?? 0;
+        final reapplyMins = session['lockedReapplyMinutes'] as int? ?? session['reapplyMinutes'] as int? ?? 0;
 
-        timerRunning = completed > 0 && completed < total;
-        sessionsText = '$completed/$total';
+        timerRunning = sessionsCompleted > 0 && sessionsCompleted < sessionsTotal;
 
         if (timerRunning) {
           final endMs = lastApplied + (reapplyMins * 60 * 1000);
           timerEndTime = DateTime.fromMillisecondsSinceEpoch(endMs);
           
           final nowMs = DateTime.now().millisecondsSinceEpoch;
-          if (nowMs < endMs) {
+          final minsLeft = (endMs - nowMs) / (1000 * 60);
+
+          if (minsLeft > 15) {
             protectionStatus = 'Protected';
+          } else if (minsLeft > 0) {
+            protectionStatus = 'Expiring Soon';
           } else {
-            protectionStatus = 'Expired';
+            protectionStatus = 'Unprotected';
           }
-        } else if (completed >= total) {
+        } else if (sessionsCompleted >= sessionsTotal && sessionsTotal > 0) {
           protectionStatus = 'Done for today';
         }
+      }
+
+      if (isLowUV) {
+        protectionStatus = 'UV is low';
       }
 
       await updateWidgetData(
         uvIndex: uvData.uvIndex.round(),
         uvStatus: uvData.riskLevel,
-        burnTime: burnTime,
+        burnTime: burnTimeMins,
         timerRunning: timerRunning,
         timerEndTime: timerEndTime,
-        sessionsText: sessionsText,
+        sessionsCompleted: sessionsCompleted,
+        sessionsTotal: sessionsTotal,
         protectionStatus: protectionStatus,
+        isLowUV: isLowUV,
       );
     } catch (_) {}
   }
@@ -62,8 +77,10 @@ class WidgetService {
     required String burnTime,
     required bool timerRunning,
     required DateTime? timerEndTime,
-    required String sessionsText,
+    required int sessionsCompleted,
+    required int sessionsTotal,
     required String protectionStatus,
+    required bool isLowUV,
   }) async {
     try {
       if (Platform.isIOS) {
@@ -74,8 +91,10 @@ class WidgetService {
       await HomeWidget.saveWidgetData('uv_status', uvStatus);
       await HomeWidget.saveWidgetData('burn_time', burnTime);
       await HomeWidget.saveWidgetData('timer_running', timerRunning);
-      await HomeWidget.saveWidgetData('sessions_text', sessionsText);
+      await HomeWidget.saveWidgetData('sessions_completed', sessionsCompleted);
+      await HomeWidget.saveWidgetData('sessions_total', sessionsTotal);
       await HomeWidget.saveWidgetData('protection_status', protectionStatus);
+      await HomeWidget.saveWidgetData('is_low_uv', isLowUV);
       
       if (timerEndTime != null) {
         await HomeWidget.saveWidgetData(

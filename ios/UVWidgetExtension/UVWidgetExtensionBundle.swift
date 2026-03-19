@@ -12,7 +12,7 @@ import SwiftUI
 struct UVWidgetExtensionBundle: WidgetBundle {
     var body: some Widget {
         UVWidget()
-        UVWidgetExtensionControl()
-        UVWidgetExtensionLiveActivity()
+        // UVWidgetExtensionControl() // Requires iOS 18.0+
+        // UVWidgetExtensionLiveActivity() // Requires iOS 16.1+
     }
 }

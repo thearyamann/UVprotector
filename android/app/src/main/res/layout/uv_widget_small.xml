@@ -1,47 +1,140 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="12dp"
-    android:background="@drawable/widget_glass_bg">
+    android:background="@drawable/widget_glass_bg"
+    android:padding="14dp">
 
+    <!-- Top Row -->
     <LinearLayout
+        android:id="@+id/top_row"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        
+        <ImageView
+            android:src="@android:drawable/ic_menu_day"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:alpha="0.7"
+            android:tint="#FFFFFF"
+            android:id="@+id/iv_sun"/>
 
         <TextView
-            android:id="@+id/widget_uv_index"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="--"
-            android:textColor="#FFFFFF"
-            android:textSize="28sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_uv_status"
+            android:text="UV INDEX"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:textColor="#52FFFFFF"
+            android:layout_marginStart="6dp" />
+            
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"/>
+            
+        <ImageView
+            android:id="@+id/iv_status_pill"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Loading"
-            android:textColor="#88FFFFFF"
-            android:textSize="12sp"
-            android:textAllCaps="true" />
-
-        <View
-            android:layout_width="20dp"
-            android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
-            android:background="#33FFFFFF" />
-
-        <TextView
-            android:id="@+id/widget_timer_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Safe"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
+            android:layout_height="20dp"
+            android:adjustViewBounds="true"/>
     </LinearLayout>
+
+    <!-- Center -->
+    <TextView
+        android:id="@+id/tv_uv_index"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="6"
+        android:textSize="52sp"
+        android:textStyle="bold"/>
+
+    <!-- Bottom Card Container: Standard -->
+    <LinearLayout
+        android:id="@+id/bottom_card_standard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/widget_inner_glass_small"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp">
+        
+        <ImageView
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:src="@android:drawable/star_on"
+            android:tint="#FFFFFF"/>
+            
+        <Chronometer
+            android:id="@+id/timer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"/>
+            
+        <TextView
+            android:id="@+id/tv_timer_fallback"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:text="--:--"/>
+            
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
+            
+        <TextView
+            android:id="@+id/tv_bottom_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Active"
+            android:textSize="9sp"
+            android:textColor="#80FFFFFF"/>
+    </LinearLayout>
+
+    <!-- Bottom Card Container: Low UV -->
+    <LinearLayout
+        android:id="@+id/bottom_card_low_uv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:background="@drawable/widget_inner_glass_low_uv_small"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No cream needed"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:textColor="#4ade80"/>
+            
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Check when heading outside"
+            android:textSize="8sp"
+            android:textColor="#61FFFFFF"/>
+    </LinearLayout>
+
 </RelativeLayout>

@@ -12,20 +12,17 @@ class UVController {
     required double longitude,
     int skinTypeNumber = 1,
   }) async {
-    // ⚠️ TEMP: Hardcoded UV for testing
-    const double testingUV = 6.0; 
-    
-    final riskLevel = UVRiskEngine.getRiskLevel(testingUV);
+    final riskLevel = UVRiskEngine.getRiskLevel(uvIndex);
     final burnTime = SunExposureEngine.calculateBurnTime(
-      uvIndex: testingUV,
+      uvIndex: uvIndex,
       skinTypeNumber: skinTypeNumber,
     );
     final advice = SunExposureEngine.getExposureAdvice(burnTime);
-    final spf = SunscreenEngine.getSpfRecommendation(testingUV);
-    final reapply = SunscreenEngine.getReapplyMinutes(testingUV);
+    final spf = SunscreenEngine.getSpfRecommendation(uvIndex);
+    final reapply = SunscreenEngine.getReapplyMinutes(uvIndex);
 
     return UVData(
-      uvIndex: testingUV,
+      uvIndex: uvIndex,
       riskLevel: riskLevel,
       burnTimeMinutes: burnTime,
       exposureAdvice: advice,
