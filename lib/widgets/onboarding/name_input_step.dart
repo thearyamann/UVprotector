@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/theme_controller.dart';
+import '../../config/app_config.dart';
 
-class NameInputStep extends StatelessWidget {
+class NameInputStep extends StatefulWidget {
   final String currentValue;
   final ValueChanged<String> onChanged;
   final VoidCallback onSubmitted;
@@ -15,9 +16,31 @@ class NameInputStep extends StatelessWidget {
   });
 
   @override
+  State<NameInputStep> createState() => _NameInputStepState();
+}
+
+class _NameInputStepState extends State<NameInputStep> {
+  String? _errorText;
+
+  void _validateAndSubmit(String value) {
+    final trimmed = value.trim();
+    if (trimmed.length > AppConfig.nameMaxLength) {
+      setState(() {
+        _errorText =
+            'Name must be ${AppConfig.nameMaxLength} characters or less';
+      });
+      return;
+    }
+    setState(() {
+      _errorText = null;
+    });
+    widget.onSubmitted();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final bool isDark = ThemeController.of(context).isDark;
-    
+
     return Column(
       children: [
         const SizedBox(height: 20),
@@ -27,7 +50,9 @@ class NameInputStep extends StatelessWidget {
             color: AppTheme.cardBg(isDark),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: AppTheme.cardBorder(isDark),
+              color: _errorText != null
+                  ? const Color(0xFFDC2626).withValues(alpha: 0.5)
+                  : AppTheme.cardBorder(isDark),
               width: 0.8,
             ),
           ),
@@ -43,8 +68,15 @@ class NameInputStep extends StatelessWidget {
               const SizedBox(height: 12),
               TextField(
                 autofocus: true,
-                onChanged: (value) => onChanged(value.trim()),
-                onSubmitted: (_) => onSubmitted(),
+                maxLength: AppConfig.nameMaxLength,
+                onChanged: (value) {
+                  widget.onChanged(value.trim());
+                  if (_errorText != null &&
+                      value.length <= AppConfig.nameMaxLength) {
+                    setState(() => _errorText = null);
+                  }
+                },
+                onSubmitted: _validateAndSubmit,
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
@@ -60,9 +92,15 @@ class NameInputStep extends StatelessWidget {
                   ),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
+                  counterText: '',
+                  errorText: _errorText,
+                  errorStyle: TextStyle(
+                    color: const Color(0xFFDC2626),
+                    fontSize: 12,
+                  ),
                 ),
                 textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.next,
+                textInputAction: TextInputAction.done,
                 autocorrect: false,
                 enableSuggestions: false,
               ),

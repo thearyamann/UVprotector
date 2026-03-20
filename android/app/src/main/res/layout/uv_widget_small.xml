@@ -1,140 +1,148 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_container"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_glass_bg"
-    android:padding="14dp">
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/widget_glass_bg_transparent">
 
-    <!-- Top Row -->
+    <!-- Header Row -->
     <LinearLayout
-        android:id="@+id/top_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical">
-        
-        <ImageView
-            android:src="@android:drawable/ic_menu_day"
-            android:layout_width="14dp"
-            android:layout_height="14dp"
-            android:alpha="0.7"
-            android:tint="#FFFFFF"
-            android:id="@+id/iv_sun"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_sun"
+                android:alpha="0.7"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="UV INDEX"
+                android:textColor="#59FFFFFF"
+                android:textSize="8sp"
+                android:textStyle="bold"
+                android:letterSpacing="1.5"/>
+        </LinearLayout>
 
         <TextView
+            android:id="@+id/sw_pill_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="UV INDEX"
-            android:textSize="8sp"
+            android:text="HIGH"
+            android:textColor="#f97316"
+            android:textSize="9sp"
             android:textStyle="bold"
-            android:textColor="#52FFFFFF"
-            android:layout_marginStart="6dp" />
-            
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"/>
-            
-        <ImageView
-            android:id="@+id/iv_status_pill"
-            android:layout_width="wrap_content"
-            android:layout_height="20dp"
-            android:adjustViewBounds="true"/>
+            android:letterSpacing="0.8"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:background="@drawable/pill_bg_high"/>
     </LinearLayout>
 
-    <!-- Center -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+    <!-- UV Number -->
     <TextView
-        android:id="@+id/tv_uv_index"
+        android:id="@+id/sw_uv_number"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
         android:text="6"
-        android:textSize="52sp"
-        android:textStyle="bold"/>
+        android:textColor="#f97316"
+        android:textSize="56sp"
+        android:textStyle="bold"
+        android:letterSpacing="-4"
+        android:includeFontPadding="false"/>
 
-    <!-- Bottom Card Container: Standard -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+    <!-- Timer Card -->
     <LinearLayout
-        android:id="@+id/bottom_card_standard"
+        android:id="@+id/sw_timer_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="@drawable/widget_inner_glass_small"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp">
-        
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:background="@drawable/inner_card_bg">
+
         <ImageView
-            android:layout_width="10dp"
-            android:layout_height="10dp"
-            android:src="@android:drawable/star_on"
-            android:tint="#FFFFFF"/>
-            
-        <Chronometer
-            android:id="@+id/timer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:fontFamily="monospace"/>
-            
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:src="@drawable/ic_shield"
+            android:alpha="0.6"/>
+
         <TextView
-            android:id="@+id/tv_timer_fallback"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:text="--:--"/>
-            
-        <Space
+            android:id="@+id/sw_timer_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"/>
-            
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="01:22"
+            android:textColor="#EBFFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"/>
+
         <TextView
-            android:id="@+id/tv_bottom_status"
+            android:id="@+id/sw_timer_sub"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Active"
-            android:textSize="9sp"
-            android:textColor="#80FFFFFF"/>
+            android:textColor="#61FFFFFF"
+            android:textSize="9sp"/>
     </LinearLayout>
 
-    <!-- Bottom Card Container: Low UV -->
+    <!-- Low UV Card -->
     <LinearLayout
-        android:id="@+id/bottom_card_low_uv"
+        android:id="@+id/sw_message_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
         android:orientation="vertical"
         android:visibility="gone"
-        android:background="@drawable/widget_inner_glass_low_uv_small"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp">
-        
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:background="@drawable/inner_card_green_bg">
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="No cream needed"
-            android:textSize="9sp"
-            android:textStyle="bold"
-            android:textColor="#4ade80"/>
-            
+            android:textColor="#4ade80"
+            android:textSize="10sp"
+            android:textStyle="bold"/>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
             android:text="Check when heading outside"
-            android:textSize="8sp"
-            android:textColor="#61FFFFFF"/>
+            android:textColor="#61FFFFFF"
+            android:textSize="9sp"/>
     </LinearLayout>
-
-</RelativeLayout>
+</LinearLayout>

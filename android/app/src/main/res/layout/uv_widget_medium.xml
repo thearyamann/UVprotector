@@ -1,190 +1,225 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_container"
+    android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_glass_bg"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:paddingTop="14dp"
-    android:paddingBottom="14dp"
     android:orientation="horizontal"
-    android:baselineAligned="false">
+    android:padding="16dp"
+    android:background="@drawable/widget_glass_bg_transparent">
 
-    <!-- Left Column (Static Structure) -->
+    <!-- Left Column -->
     <LinearLayout
-        android:layout_width="110dp"
+        android:layout_width="95dp"
         android:layout_height="match_parent"
         android:orientation="vertical">
-        
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="UV INDEX"
-            android:textSize="9sp"
+            android:textColor="#59FFFFFF"
+            android:textSize="8sp"
             android:textStyle="bold"
-            android:textColor="#52FFFFFF" />
+            android:letterSpacing="1.5"/>
 
-        <Space
+        <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_weight="1"/>
 
-        <!-- Circular Ring filled by Kotlin Canvas -->
-        <ImageView
-            android:id="@+id/iv_uv_ring"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:layout_gravity="center_horizontal"/>
+        <!-- Ring + UV Number -->
+        <FrameLayout
+            android:layout_width="76dp"
+            android:layout_height="76dp"
+            android:layout_gravity="center_horizontal">
 
-        <Space
+            <ImageView
+                android:id="@+id/mw_ring"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+            <TextView
+                android:id="@+id/mw_uv_number"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="6"
+                android:textColor="#f97316"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:gravity="center"/>
+        </FrameLayout>
+
+        <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_weight="1"/>
 
+        <!-- Burn Time -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
+
             <ImageView
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:src="@android:drawable/ic_dialog_alert"
-                android:tint="#8CFFFFFF"/>
-                
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:src="@drawable/ic_flame"
+                android:alpha="0.6"/>
+
             <TextView
+                android:id="@+id/mw_burn_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Burn in "
+                android:layout_marginStart="5dp"
+                android:text="Burn in 11 mins"
+                android:textColor="#EBFFFFFF"
                 android:textSize="10sp"
-                android:textStyle="bold"
-                android:textColor="#8CFFFFFF"
-                android:layout_marginStart="4dp"/>
-            <TextView
-                android:id="@+id/tv_burn_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="11 mins"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:textColor="#f97316"/>
+                android:textStyle="bold"/>
         </LinearLayout>
     </LinearLayout>
-    
-    <Space
-        android:layout_width="14dp"
-        android:layout_height="match_parent" />
 
-    <!-- Right Column Container -->
+    <View
+        android:layout_width="16dp"
+        android:layout_height="match_parent"/>
+
+    <!-- Right Panel Container -->
     <FrameLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1">
-        
-        <!-- Standard Right Card -->
-        <RelativeLayout
-            android:id="@+id/right_card_standard"
+
+        <!-- Active Panel -->
+        <LinearLayout
+            android:id="@+id/mw_active_panel"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@drawable/widget_inner_glass"
-            android:padding="12dp">
-            
-            <ImageView
-                android:id="@+id/iv_protection_pill"
-                android:layout_width="wrap_content"
-                android:layout_height="20dp"
-                android:adjustViewBounds="true"
-                android:layout_alignParentTop="true"
-                android:layout_alignParentStart="true"/>
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/inner_card_bg">
 
-            <Chronometer
-                android:id="@+id/timer_large"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:textColor="#EBEBEB"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:fontFamily="monospace"/>
-                
             <TextView
-                android:id="@+id/tv_timer_large_fallback"
+                android:id="@+id/mw_protect_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:textColor="#4DFFFFFF"
+                android:text="PROTECTED"
+                android:textColor="#4ade80"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.8"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="@drawable/pill_bg_green"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+
+            <TextView
+                android:id="@+id/mw_timer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="01:22:45"
+                android:textColor="#EBFFFFFF"
                 android:textSize="28sp"
                 android:textStyle="bold"
-                android:text="--:--:--"/>
+                android:fontFamily="monospace"
+                android:letterSpacing="-1"/>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+
+            <!-- Sessions -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_alignParentBottom="true"
                 android:orientation="vertical">
+
                 <TextView
-                    android:id="@+id/tv_sessions"
+                    android:id="@+id/mw_sessions_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="1 / 3 Sessions"
+                    android:textColor="#8CFFFFFF"
                     android:textSize="9sp"
-                    android:textColor="#80FFFFFF"
-                    android:layout_marginBottom="4dp"/>
-                
-                <ImageView
-                    android:id="@+id/iv_session_progress"
-                    android:layout_width="match_parent"
-                    android:layout_height="3dp" />
-            </LinearLayout>
-        </RelativeLayout>
+                    android:layout_marginBottom="6dp"/>
 
-        <!-- Low UV Right Card -->
-        <RelativeLayout
-            android:id="@+id/right_card_low_uv"
+                <ImageView
+                    android:id="@+id/mw_sessions_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:scaleType="fitXY"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Low UV Panel -->
+        <LinearLayout
+            android:id="@+id/mw_low_panel"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@drawable/widget_inner_glass_low_uv_medium"
+            android:orientation="vertical"
             android:padding="12dp"
+            android:background="@drawable/inner_card_green_bg"
             android:visibility="gone">
-            
-            <ImageView
-                android:id="@+id/iv_low_uv_pill"
-                android:layout_width="wrap_content"
-                android:layout_height="20dp"
-                android:adjustViewBounds="true"
-                android:layout_alignParentTop="true"
-                android:layout_alignParentStart="true"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:orientation="vertical">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="No cream needed at the moment"
-                    android:textColor="#4ade80"
-                    android:textSize="12sp"
-                    android:textStyle="bold"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Check again when you head outside"
-                    android:textColor="#6bFFFFFF"
-                    android:textSize="10sp"
-                    android:layout_marginTop="2dp"/>
-            </LinearLayout>
 
             <TextView
-                android:id="@+id/tv_sessions_low_uv"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentBottom="true"
-                android:text="0 / 3 Sessions"
+                android:text="UV IS LOW"
+                android:textColor="#4ade80"
                 android:textSize="9sp"
-                android:textColor="#40FFFFFF"/>
-        </RelativeLayout>
+                android:textStyle="bold"
+                android:letterSpacing="0.8"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="@drawable/pill_bg_green"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No cream needed"
+                    android:textColor="#4ade80"
+                    android:textSize="13sp"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Check again when you head outside"
+                    android:textColor="#8CFFFFFF"
+                    android:textSize="10sp"/>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+
+            <TextView
+                android:id="@+id/mw_low_sessions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 / 3 Sessions"
+                android:textColor="#61FFFFFF"
+                android:textSize="9sp"/>
+        </LinearLayout>
     </FrameLayout>
 </LinearLayout>

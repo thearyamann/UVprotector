@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:home_widget/home_widget.dart';
 import 'uv_cache_service.dart';
-import 'preferences_service.dart';
+import '../core/logger.dart';
 
 class WidgetService {
   static const String _groupId = 'group.com.thearyamann.uvprotector';
-  static const String _iosWidgetName = 'UVWidget';
+  static const String _iosWidgetName = 'UVProtectorWidget';
   static const String _androidWidgetName = 'UVWidgetProvider';
 
   static Future<void> updateFromCache() async {
@@ -17,27 +17,27 @@ class WidgetService {
 
       bool timerRunning = false;
       DateTime? timerEndTime;
-      String burnTimeMins = uvData.burnTimeMinutes.round().toString();
-      bool isLowUV = uvData.uvIndex < 3;
-
-      final prefs = await PreferencesService.loadPreferences();
-
-      String protectionStatus = 'Unprotected';
+      String protectionStatus = 'Not Applied';
       int sessionsCompleted = 0;
-      int sessionsTotal = 0; // Default to 0
+      int sessionsTotal = 0;
 
       if (session != null) {
         sessionsCompleted = session['sessionsCompleted'] as int? ?? 0;
-        sessionsTotal = session['lockedTotalSessions'] as int? ?? session['totalSessions'] as int? ?? 0;
+        sessionsTotal =
+            session['lockedTotalSessions'] as int? ??
+            session['totalSessions'] as int? ??
+            0;
         final lastApplied = session['lastAppliedAt'] as int? ?? 0;
-        final reapplyMins = session['lockedReapplyMinutes'] as int? ?? session['reapplyMinutes'] as int? ?? 0;
+        final reapplyMins =
+            session['lockedReapplyMinutes'] as int? ??
+            session['reapplyMinutes'] as int? ??
+            0;
 
-        timerRunning = sessionsCompleted > 0 && sessionsCompleted < sessionsTotal;
-
-        if (timerRunning) {
+        if (sessionsCompleted > 0 && sessionsCompleted < sessionsTotal) {
+          timerRunning = true;
           final endMs = lastApplied + (reapplyMins * 60 * 1000);
           timerEndTime = DateTime.fromMillisecondsSinceEpoch(endMs);
-          
+
           final nowMs = DateTime.now().millisecondsSinceEpoch;
           final minsLeft = (endMs - nowMs) / (1000 * 60);
 
@@ -46,69 +46,79 @@ class WidgetService {
           } else if (minsLeft > 0) {
             protectionStatus = 'Expiring Soon';
           } else {
-            protectionStatus = 'Unprotected';
+            protectionStatus = 'Not Applied';
           }
         } else if (sessionsCompleted >= sessionsTotal && sessionsTotal > 0) {
           protectionStatus = 'Done for today';
+        } else {
+          protectionStatus = 'Not Applied';
         }
       }
 
+      final isLowUV = uvData.uvIndex <= 2;
+
       if (isLowUV) {
         protectionStatus = 'UV is low';
+        timerRunning = false;
+        timerEndTime = null;
       }
 
-      await updateWidgetData(
+      final burnTime = '${uvData.burnTimeMinutes} mins';
+      final sessionsText = '$sessionsCompleted/$sessionsTotal';
+
+      await _push(
         uvIndex: uvData.uvIndex.round(),
         uvStatus: uvData.riskLevel,
-        burnTime: burnTimeMins,
+        burnTime: burnTime,
         timerRunning: timerRunning,
         timerEndTime: timerEndTime,
-        sessionsCompleted: sessionsCompleted,
-        sessionsTotal: sessionsTotal,
+        sessionsText: sessionsText,
         protectionStatus: protectionStatus,
-        isLowUV: isLowUV,
       );
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.logServiceError('WidgetService', 'updateFromCache', e, st);
+    }
   }
 
-  static Future<void> updateWidgetData({
+  static Future<void> _push({
     required int uvIndex,
     required String uvStatus,
     required String burnTime,
     required bool timerRunning,
     required DateTime? timerEndTime,
-    required int sessionsCompleted,
-    required int sessionsTotal,
+    required String sessionsText,
     required String protectionStatus,
-    required bool isLowUV,
   }) async {
     try {
       if (Platform.isIOS) {
         await HomeWidget.setAppGroupId(_groupId);
       }
 
-      await HomeWidget.saveWidgetData('uv_index', uvIndex);
-      await HomeWidget.saveWidgetData('uv_status', uvStatus);
-      await HomeWidget.saveWidgetData('burn_time', burnTime);
-      await HomeWidget.saveWidgetData('timer_running', timerRunning);
-      await HomeWidget.saveWidgetData('sessions_completed', sessionsCompleted);
-      await HomeWidget.saveWidgetData('sessions_total', sessionsTotal);
-      await HomeWidget.saveWidgetData('protection_status', protectionStatus);
-      await HomeWidget.saveWidgetData('is_low_uv', isLowUV);
-      
+      await HomeWidget.saveWidgetData<int>('uv_index', uvIndex);
+      await HomeWidget.saveWidgetData<String>('uv_status', uvStatus);
+      await HomeWidget.saveWidgetData<String>('burn_time', burnTime);
+      await HomeWidget.saveWidgetData<bool>('timer_running', timerRunning);
+      await HomeWidget.saveWidgetData<String>('sessions_text', sessionsText);
+      await HomeWidget.saveWidgetData<String>(
+        'protection_status',
+        protectionStatus,
+      );
+
       if (timerEndTime != null) {
-        await HomeWidget.saveWidgetData(
-          'timer_end_time', 
-          timerEndTime.millisecondsSinceEpoch
+        await HomeWidget.saveWidgetData<int>(
+          'timer_end_time',
+          timerEndTime.millisecondsSinceEpoch,
         );
       } else {
-        await HomeWidget.saveWidgetData('timer_end_time', null);
+        await HomeWidget.saveWidgetData<int?>('timer_end_time', null);
       }
 
       await HomeWidget.updateWidget(
         iOSName: _iosWidgetName,
         androidName: _androidWidgetName,
       );
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.logServiceError('WidgetService', '_push', e, st);
+    }
   }
 }

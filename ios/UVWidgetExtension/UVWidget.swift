@@ -1,456 +1,505 @@
 import WidgetKit
 import SwiftUI
 
-// MARK: - THEME COLORS & HELPERS
-struct WidgetTheme {
-    static let baseBg = Color(red: 10/255, green: 10/255, blue: 10/255) // #0a0a0a
-    
-    static func riskColor(for index: Int) -> Color {
-        if index >= 8 { return Color(red: 248/255, green: 113/255, blue: 113/255) } // Red
-        if index >= 6 { return Color(red: 249/255, green: 115/255, blue: 22/255) } // Orange
-        if index >= 3 { return Color(red: 251/255, green: 191/255, blue: 36/255) } // Amber
-        return Color(red: 74/255, green: 222/255, blue: 128/255) // Green
-    }
-    
-    static func glowColor(for index: Int) -> Color {
-        if index >= 8 { return Color(red: 220/255, green: 38/255, blue: 38/255).opacity(0.35) }
-        if index >= 6 { return Color(red: 234/255, green: 88/255, blue: 12/255).opacity(0.35) }
-        if index >= 3 { return Color(red: 217/255, green: 119/255, blue: 6/255).opacity(0.30) }
-        return Color(red: 22/255, green: 163/255, blue: 74/255).opacity(0.28)
-    }
-    
-    static func pillStyle(for index: Int) -> (bg: Color, text: Color, border: Color) {
-        if index >= 8 {
-            return (Color(red: 220/255, green: 38/255, blue: 38/255).opacity(0.22), riskColor(for: index), Color(red: 220/255, green: 38/255, blue: 38/255).opacity(0.4))
-        } else if index >= 6 {
-             return (Color(red: 234/255, green: 88/255, blue: 12/255).opacity(0.22), riskColor(for: index), Color(red: 234/255, green: 88/255, blue: 12/255).opacity(0.4))
-        } else if index >= 3 {
-            return (Color(red: 217/255, green: 119/255, blue: 6/255).opacity(0.22), riskColor(for: index), Color(red: 217/255, green: 119/255, blue: 6/255).opacity(0.4))
-        }
-        return (Color(red: 22/255, green: 163/255, blue: 74/255).opacity(0.22), riskColor(for: index), Color(red: 22/255, green: 163/255, blue: 74/255).opacity(0.4))
-    }
-    
-    static func pillStyle(isGood: Bool) -> (bg: Color, text: Color, border: Color) {
-        if isGood {
-             return (Color(red: 22/255, green: 163/255, blue: 74/255).opacity(0.22), Color(red: 74/255, green: 222/255, blue: 128/255), Color(red: 22/255, green: 163/255, blue: 74/255).opacity(0.4))
-        } else {
-            return (Color(red: 220/255, green: 38/255, blue: 38/255).opacity(0.22), Color(red: 248/255, green: 113/255, blue: 113/255), Color(red: 220/255, green: 38/255, blue: 38/255).opacity(0.4))
-        }
-    }
-}
+// MARK: - Data Model
 
-// MARK: - COMPONENTS
-struct StatusPill: View {
-    let text: String
-    let style: (bg: Color, text: Color, border: Color)
-    
-    var body: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(style.text)
-                .frame(width: 5, height: 5)
-            
-            Text(text.uppercased())
-                .font(.system(size: 10, weight: .bold))
-                .tracking(0.8)
-                .foregroundColor(style.text)
-        }
-        .padding(.vertical, 3)
-        .padding(.leading, 8)
-        .padding(.trailing, 10)
-        .background(style.bg)
-        .overlay(
-            RoundedRectangle(cornerRadius: 100)
-                .stroke(style.border, lineWidth: 1)
-        )
-        .cornerRadius(100)
-        .fixedSize(horizontal: true, vertical: false)
-    }
-}
-
-struct CircularProgressRing: View {
-    let uvIndex: Int
-    
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: 5)
-                .rotationEffect(.degrees(-90))
-            
-            // Map 0-11 to 0-1
-            let progress = min(Double(uvIndex) / 11.0, 1.0)
-            
-            // Gradient based on risk
-            let riskColor = WidgetTheme.riskColor(for: uvIndex)
-            let startColor = WidgetTheme.riskColor(for: max(0, uvIndex - 2))
-            
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(LinearGradient(colors: [startColor, riskColor], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            
-            Text(String(uvIndex))
-                .font(.system(size: 26, weight: .bold))
-                .foregroundColor(riskColor)
-        }
-        .frame(width: 72, height: 72)
-    }
-}
-
-
-// MARK: - WIDGET PROVIDER
-struct Provider: TimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), uvIndex: 6, uvStatus: "High", burnTime: "11", timerRunning: true, timerEndTime: Date().addingTimeInterval(3600), sessionsCompleted: 1, sessionsTotal: 3, protectionStatus: "Protected", isLowUv: false)
-    }
-
-    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        completion(loadEntry())
-    }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-        // Timeline expires every hour, but Flutter background task updates it more frequently.
-        completion(Timeline(entries: [loadEntry()], policy: .atEnd))
-    }
-    
-    private func loadEntry() -> SimpleEntry {
-        let userDefaults = UserDefaults(suiteName: "group.com.thearyamann.uvprotector")
-        let uvIndex = userDefaults?.integer(forKey: "uv_index") ?? 0
-        let uvStatus = userDefaults?.string(forKey: "uv_status") ?? "Low"
-        let burnTime = userDefaults?.string(forKey: "burn_time") ?? "0"
-        let timerRunning = userDefaults?.bool(forKey: "timer_running") ?? false
-        let timerEndMs = userDefaults?.integer(forKey: "timer_end_time") ?? 0
-        let sessionsCompleted = userDefaults?.integer(forKey: "sessions_completed") ?? 0
-        let sessionsTotal = userDefaults?.integer(forKey: "sessions_total") ?? 0
-        let protectionStatus = userDefaults?.string(forKey: "protection_status") ?? "Unprotected"
-        let isLowUv = userDefaults?.bool(forKey: "is_low_uv") ?? false
-        
-        var timerEndTime: Date? = nil
-        if timerEndMs > 0 { timerEndTime = Date(timeIntervalSince1970: Double(timerEndMs) / 1000.0) }
-        
-        return SimpleEntry(date: Date(), uvIndex: uvIndex, uvStatus: uvStatus, burnTime: burnTime, timerRunning: timerRunning, timerEndTime: timerEndTime, sessionsCompleted: sessionsCompleted, sessionsTotal: sessionsTotal, protectionStatus: protectionStatus, isLowUv: isLowUv)
-    }
-}
-
-struct SimpleEntry: TimelineEntry {
+struct UVWidgetEntry: TimelineEntry {
     let date: Date
     let uvIndex: Int
     let uvStatus: String
     let burnTime: String
     let timerRunning: Bool
     let timerEndTime: Date?
-    let sessionsCompleted: Int
-    let sessionsTotal: Int
+    let sessionsText: String
     let protectionStatus: String
-    let isLowUv: Bool
-}
-
-// MARK: - WIDGET VIEWS
-struct SmallWidgetLayout: View {
-    var entry: SimpleEntry
     
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Top Row
-            HStack(alignment: .center, spacing: 6) {
-                Image(systemName: "sun.max")
-                    .resizable()
-                    .frame(width: 14, height: 14)
-                    .foregroundColor(Color.white.opacity(0.7))
-                
-                Text("UV")
-                    .font(.system(size: 8, weight: .bold))
-                    .tracking(1.2)
-                    .foregroundColor(Color.white.opacity(0.3))
-                
-                Spacer()
-                
-                StatusPill(text: entry.uvStatus, style: WidgetTheme.pillStyle(for: entry.uvIndex))
-            }
-            
-            Spacer()
-            
-            // Middle
-            Text(String(entry.uvIndex))
-                .font(.system(size: 52, weight: .bold))
-                .tracking(-3)
-                .foregroundColor(WidgetTheme.riskColor(for: entry.uvIndex))
-            
-            Spacer()
-            
-            // Bottom Card
-            bottomCard
-        }
-        .padding(14)
+    var isLow: Bool { uvIndex <= 2 }
+    
+    var sessionsCompleted: Int {
+        Int(sessionsText.split(separator: "/").first ?? "0") ?? 0
     }
     
-    @ViewBuilder
-    var bottomCard: some View {
-        if entry.isLowUv {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("No cream needed")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(Color(red: 74/255, green: 222/255, blue: 128/255))
-                Text("Check when heading outside")
-                    .font(.system(size: 8))
-                    .foregroundColor(Color.white.opacity(0.38))
-            }
-            .padding(.vertical, 7)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(red: 74/255, green: 222/255, blue: 128/255).opacity(0.07))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(red: 74/255, green: 222/255, blue: 128/255).opacity(0.2), lineWidth: 0.5))
-            .cornerRadius(10)
-        } else {
-            HStack(spacing: 6) {
-                Image(systemName: "star.shield.fill")
-                    .resizable()
-                    .frame(width: 10, height: 10)
-                    .foregroundColor(.white)
-                
-                if entry.timerRunning, let endTime = entry.timerEndTime {
-                    Text(endTime, style: .timer)
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .minimumScaleFactor(0.8)
-                        .foregroundColor(.white)
-                        .layoutPriority(1)
-                    Spacer()
-                    Text("Active")
-                        .font(.system(size: 9))
-                        .foregroundColor(Color.white.opacity(0.5))
-                } else {
-                    Text("--:--")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Text("Ready")
-                        .font(.system(size: 9))
-                        .foregroundColor(Color.white.opacity(0.5))
-                }
-            }
-            .padding(.vertical, 7)
-            .padding(.horizontal, 10)
-            .background(Color.white.opacity(0.06))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.08), lineWidth: 0.5))
-            .cornerRadius(10)
+    var sessionsTotal: Int {
+        Int(sessionsText.split(separator: "/").last ?? "0") ?? 0
+    }
+    
+    var sessionsFraction: Double {
+        guard sessionsTotal > 0 else { return 0 }
+        return Double(sessionsCompleted) / Double(sessionsTotal)
+    }
+}
+
+// MARK: - Design Tokens
+
+struct WidgetColors {
+    static let glassBg = Color.white.opacity(0.08)
+    static let glassBorder = Color.white.opacity(0.15)
+    static let innerCardBg = Color.white.opacity(0.06)
+    static let innerCardBorder = Color.white.opacity(0.12)
+    
+    static let textPrimary = Color.white.opacity(0.92)
+    static let textSecondary = Color.white.opacity(0.55)
+    static let textMuted = Color.white.opacity(0.38)
+    static let labelMuted = Color.white.opacity(0.35)
+    
+    static let greenBg = Color(red: 0.29, green: 0.87, blue: 0.50).opacity(0.08)
+    static let greenBorder = Color(red: 0.29, green: 0.87, blue: 0.50).opacity(0.25)
+}
+
+struct WidgetTheme {
+    static func riskColor(_ index: Int) -> Color {
+        switch index {
+        case 0...2: return Color(red: 0.29, green: 0.87, blue: 0.50)
+        case 3...5: return Color(red: 0.98, green: 0.75, blue: 0.14)
+        case 6...7: return Color(red: 0.98, green: 0.45, blue: 0.09)
+        default:    return Color(red: 0.97, green: 0.44, blue: 0.44)
+        }
+    }
+    
+    static func glowColor(_ index: Int) -> Color {
+        switch index {
+        case 0...2: return Color(red: 0.29, green: 0.87, blue: 0.50).opacity(0.15)
+        case 3...5: return Color(red: 0.98, green: 0.75, blue: 0.14).opacity(0.15)
+        case 6...7: return Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.18)
+        default:    return Color(red: 0.97, green: 0.44, blue: 0.44).opacity(0.18)
         }
     }
 }
 
-struct MediumWidgetLayout: View {
-    var entry: SimpleEntry
+// MARK: - Components
+
+struct GlassCard: View {
+    let bgColor: Color
+    let borderColor: Color
+    let cornerRadius: CGFloat
     
     var body: some View {
-        HStack(spacing: 14) {
-            // Left Column
-            VStack(alignment: .leading, spacing: 0) {
-                Text("UV INDEX")
-                    .font(.system(size: 9, weight: .bold))
-                    .tracking(1.5)
-                    .foregroundColor(Color.white.opacity(0.32))
-                
-                Spacer()
-                
-                HStack {
-                    Spacer()
-                    CircularProgressRing(uvIndex: entry.uvIndex)
-                    Spacer()
-                }
-                
-                Spacer()
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "flame.fill")
-                        .resizable()
-                        .frame(width: 8, height: 10)
-                        .foregroundColor(Color.white.opacity(0.55))
-                    
-                    Text("Burn in ")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(Color.white.opacity(0.55))
-                        + Text("\(entry.burnTime) mins")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(WidgetTheme.riskColor(for: entry.uvIndex))
-                }
-            }
-            .frame(width: 110)
-            
-            // Right Column Card
-            rightCard
-        }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 16)
-    }
-    
-    @ViewBuilder
-    var rightCard: some View {
-        if entry.isLowUv {
-            lowUvCard
-        } else {
-            activeProtectionCard
-        }
-    }
-    
-    var activeProtectionCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                let isGood = entry.protectionStatus.lowercased() == "protected" || entry.protectionStatus.lowercased().contains("done")
-                StatusPill(text: entry.protectionStatus, style: WidgetTheme.pillStyle(isGood: isGood))
-                Spacer()
-            }
-            
-            Spacer()
-            
-            if entry.timerRunning, let endTime = entry.timerEndTime {
-                Text(endTime, style: .timer)
-                    .font(.system(size: 26, weight: .medium, design: .monospaced))
-                    .tracking(-1)
-                    .minimumScaleFactor(0.5)
-                    .foregroundColor(Color.white.opacity(0.92))
-            } else {
-                Text("--:--:--")
-                    .font(.system(size: 28, weight: .medium, design: .monospaced))
-                    .tracking(-1)
-                    .foregroundColor(Color.white.opacity(0.3))
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(entry.sessionsCompleted) / \(entry.sessionsTotal) Sessions")
-                    .font(.system(size: 9))
-                    .foregroundColor(Color.white.opacity(0.5))
-                    
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.1)).frame(height: 3)
-                        
-                        let total = entry.sessionsTotal > 0 ? entry.sessionsTotal : 1
-                        let progress = CGFloat(entry.sessionsCompleted) / CGFloat(total)
-                        
-                        Capsule()
-                            .fill(LinearGradient(gradient: Gradient(colors: [Color(red: 74/255, green: 222/255, blue: 128/255), Color(red: 34/255, green: 211/255, blue: 238/255)]), startPoint: .leading, endPoint: .trailing))
-                            .frame(width: max(0, min(geometry.size.width * progress, geometry.size.width)), height: 3)
-                    }
-                }
-                .frame(height: 3)
-            }
-        }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.06))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
-        .cornerRadius(14)
-    }
-    
-    var lowUvCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                StatusPill(text: "UV IS LOW", style: WidgetTheme.pillStyle(isGood: true))
-                Spacer()
-            }
-            
-            Spacer()
-            
-            Text("No cream needed at the moment")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(Color(red: 74/255, green: 222/255, blue: 128/255))
-                .fixedSize(horizontal: false, vertical: true)
-            
-            Text("Check again when you head outside")
-                .font(.system(size: 10))
-                .foregroundColor(Color.white.opacity(0.42))
-                .padding(.top, 2)
-            
-            Spacer()
-            
-            Text("\(entry.sessionsCompleted) / \(entry.sessionsTotal) Sessions")
-                .font(.system(size: 9))
-                .foregroundColor(Color.white.opacity(0.25))
-        }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(Color(red: 74/255, green: 222/255, blue: 128/255).opacity(0.06))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(red: 74/255, green: 222/255, blue: 128/255).opacity(0.18), lineWidth: 0.5))
-        .cornerRadius(14)
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(bgColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(borderColor, lineWidth: 0.5)
+            )
     }
 }
 
-struct UVWidgetEntryView : View {
-    var entry: Provider.Entry
-    @Environment(\.widgetFamily) var family
-
+struct StatusPill: View {
+    let text: String
+    let color: Color
+    
     var body: some View {
-        ZStack {
-            if family == .systemSmall {
-                SmallWidgetLayout(entry: entry)
-            } else {
-                MediumWidgetLayout(entry: entry)
-            }
+        HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
             
-            // Top left glass sheen overlay (linear gradient)
-            GeometryReader { geo in
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.white.opacity(0.07), Color.clear]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .frame(width: geo.size.width, height: geo.size.height)
-                .mask(Rectangle().padding(.trailing, geo.size.width * 0.5))
-            }
+            Text(text.uppercased())
+                .font(.system(size: 9, weight: .bold))
+                .tracking(0.8)
+                .foregroundColor(color)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .widgetBackground(
-            ZStack {
-                WidgetTheme.baseBg
-                
-                // Active Radial Glow
-                GeometryReader { geo in
-                    RadialGradient(
-                        gradient: Gradient(colors: [WidgetTheme.glowColor(for: entry.uvIndex), Color.clear]),
-                        center: .topLeading,
-                        startRadius: 0,
-                        endRadius: family == .systemSmall ? geo.size.width * 1.5 : geo.size.width * 0.8
-                    )
-                }
-                
-                if #available(iOS 15.0, *) {
-                    Rectangle().fill(.ultraThinMaterial)
-                } else {
-                    Rectangle().fill(Color.white.opacity(0.1))
-                }
-                
-                // Extra faint white overlay matching prompt
-                Rectangle().fill(Color.white.opacity(0.055))
-            }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(color.opacity(0.15))
+        .overlay(
+            Capsule()
+                .stroke(color.opacity(0.3), lineWidth: 0.5)
+        )
+        .clipShape(Capsule())
+    }
+}
+
+struct SunIcon: View {
+    var body: some View {
+        Image(systemName: "sun.max.fill")
+            .font(.system(size: 12))
+            .foregroundColor(Color.white.opacity(0.6))
+    }
+}
+
+struct ShieldIcon: View {
+    var body: some View {
+        Image(systemName: "shield.fill")
+            .font(.system(size: 11))
+            .foregroundColor(Color.white.opacity(0.5))
+    }
+}
+
+struct FlameIcon: View {
+    var body: some View {
+        Image(systemName: "flame.fill")
+            .font(.system(size: 9))
+            .foregroundColor(Color.white.opacity(0.5))
+    }
+}
+
+struct UVLabel: View {
+    var body: some View {
+        Text("UV INDEX")
+            .font(.system(size: 8, weight: .semibold))
+            .tracking(1.5)
+            .foregroundColor(WidgetColors.labelMuted)
+    }
+}
+
+struct BurnTimeRow: View {
+    let burnTime: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            FlameIcon()
+            Text("Burn in ")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(WidgetColors.textSecondary)
+            Text(burnTime)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(color)
+        }
+    }
+}
+
+// MARK: - Timeline Provider
+
+struct UVWidgetProvider: TimelineProvider {
+    func placeholder(in context: Context) -> UVWidgetEntry {
+        UVWidgetEntry(
+            date: Date(),
+            uvIndex: 6,
+            uvStatus: "High",
+            burnTime: "11 mins",
+            timerRunning: true,
+            timerEndTime: Date().addingTimeInterval(3600),
+            sessionsText: "1/3",
+            protectionStatus: "Protected"
+        )
+    }
+    
+    func getSnapshot(in context: Context, completion: @escaping (UVWidgetEntry) -> Void) {
+        completion(loadEntry())
+    }
+    
+    func getTimeline(in context: Context, completion: @escaping (Timeline<UVWidgetEntry>) -> Void) {
+        let entry = loadEntry()
+        var nextUpdate = Date().addingTimeInterval(15 * 60)
+        if let end = entry.timerEndTime, end < nextUpdate {
+            nextUpdate = end.addingTimeInterval(60)
+        }
+        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
+        completion(timeline)
+    }
+    
+    private func loadEntry() -> UVWidgetEntry {
+        let ud = UserDefaults(suiteName: "group.com.thearyamann.uvprotector")
+        
+        return UVWidgetEntry(
+            date: Date(),
+            uvIndex: ud?.integer(forKey: "uv_index") ?? 0,
+            uvStatus: ud?.string(forKey: "uv_status") ?? "Low",
+            burnTime: ud?.string(forKey: "burn_time") ?? "0 mins",
+            timerRunning: ud?.bool(forKey: "timer_running") ?? false,
+            timerEndTime: {
+                let ms = ud?.integer(forKey: "timer_end_time") ?? 0
+                return ms > 0 ? Date(timeIntervalSince1970: Double(ms) / 1000.0) : nil
+            }(),
+            sessionsText: ud?.string(forKey: "sessions_text") ?? "0/0",
+            protectionStatus: ud?.string(forKey: "protection_status") ?? "Not Applied"
         )
     }
 }
 
-extension View {
-    @ViewBuilder
-    func widgetBackground<T: View>(_ backgroundView: T) -> some View {
-        if #available(iOS 17.0, *) {
-            self.containerBackground(for: .widget) {
-                backgroundView
+// MARK: - Small Widget
+
+struct SmallWidgetView: View {
+    let entry: UVWidgetEntry
+    let riskColor: Color
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header Row
+            HStack {
+                HStack(spacing: 5) {
+                    SunIcon()
+                    UVLabel()
+                }
+                Spacer()
+                StatusPill(text: entry.uvStatus, color: riskColor)
             }
-        } else {
-            self.background(backgroundView.edgesIgnoringSafeArea(.all))
+            
+            Spacer()
+            
+            // UV Number
+            Text("\(entry.uvIndex)")
+                .font(.system(size: 56, weight: .bold))
+                .tracking(-4)
+                .foregroundColor(riskColor)
+            
+            Spacer()
+            
+            // Bottom Card
+            if entry.isLow {
+                LowUVCard()
+            } else {
+                TimerCard(entry: entry)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct LowUVCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("No cream needed")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(WidgetTheme.riskColor(1))
+            Text("Check when heading outside")
+                .font(.system(size: 9))
+                .foregroundColor(WidgetColors.textMuted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(GlassCard(bgColor: WidgetColors.greenBg, borderColor: WidgetColors.greenBorder, cornerRadius: 10))
+    }
+}
+
+struct TimerCard: View {
+    let entry: UVWidgetEntry
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ShieldIcon()
+            
+            if entry.timerRunning, let end = entry.timerEndTime {
+                Text(end, style: .timer)
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundColor(WidgetColors.textPrimary)
+            } else {
+                Text("--:--")
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundColor(WidgetColors.textPrimary)
+            }
+            
+            Spacer()
+            
+            Text(timerLabel)
+                .font(.system(size: 9))
+                .foregroundColor(WidgetColors.textMuted)
+        }
+        .padding(10)
+        .background(GlassCard(bgColor: WidgetColors.innerCardBg, borderColor: WidgetColors.innerCardBorder, cornerRadius: 10))
+    }
+    
+    private var timerLabel: String {
+        if !entry.timerRunning { return "Ready" }
+        return entry.protectionStatus == "Expiring Soon" ? "Expiring" : "Active"
+    }
+}
+
+// MARK: - Medium Widget
+
+struct MediumWidgetView: View {
+    let entry: UVWidgetEntry
+    let riskColor: Color
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Left Column
+            VStack(alignment: .leading, spacing: 8) {
+                UVLabel()
+                
+                Spacer()
+                
+                // Ring with UV Number
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.1), lineWidth: 6)
+                        .frame(width: 76, height: 76)
+                    
+                    Circle()
+                        .trim(from: 0, to: min(Double(entry.uvIndex) / 11.0, 1.0))
+                        .stroke(
+                            LinearGradient(
+                                colors: [riskColor.opacity(0.7), riskColor],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                        )
+                        .frame(width: 76, height: 76)
+                        .rotationEffect(.degrees(-90))
+                    
+                    Text("\(entry.uvIndex)")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(riskColor)
+                }
+                
+                Spacer()
+                
+                BurnTimeRow(burnTime: entry.burnTime, color: riskColor)
+            }
+            .frame(width: 95)
+            
+            // Right Panel
+            if entry.isLow {
+                MediumLowUVPanel(sessionsTotal: entry.sessionsTotal)
+            } else {
+                MediumActivePanel(entry: entry)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct MediumLowUVPanel: View {
+    let sessionsTotal: Int
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            StatusPill(text: "UV is low", color: WidgetTheme.riskColor(1))
+            
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("No cream needed")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(WidgetTheme.riskColor(1))
+                Text("Check again when you head outside")
+                    .font(.system(size: 10))
+                    .foregroundColor(WidgetColors.textSecondary)
+            }
+            
+            Spacer()
+            
+            Text("0 / \(sessionsTotal) Sessions")
+                .font(.system(size: 9))
+                .foregroundColor(WidgetColors.textMuted)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(GlassCard(bgColor: WidgetColors.greenBg, borderColor: WidgetColors.greenBorder, cornerRadius: 14))
+    }
+}
+
+struct MediumActivePanel: View {
+    let entry: UVWidgetEntry
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            StatusPill(text: entry.protectionStatus, color: pillColor)
+            
+            Spacer()
+            
+            if entry.timerRunning, let end = entry.timerEndTime {
+                Text(end, style: .timer)
+                    .font(.system(size: 28, weight: .medium, design: .monospaced))
+                    .foregroundColor(WidgetColors.textPrimary)
+                    .tracking(-1)
+            } else {
+                Text("--:--:--")
+                    .font(.system(size: 28, weight: .medium, design: .monospaced))
+                    .foregroundColor(Color.white.opacity(0.25))
+                    .tracking(-1)
+            }
+            
+            Spacer()
+            
+            // Sessions Progress
+            VStack(alignment: .leading, spacing: 5) {
+                Text("\(entry.sessionsCompleted) / \(entry.sessionsTotal) Sessions")
+                    .font(.system(size: 9))
+                    .foregroundColor(WidgetColors.textSecondary)
+                
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.12))
+                            .frame(height: 4)
+                        
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.29, green: 0.87, blue: 0.50),
+                                        Color(red: 0.13, green: 0.83, blue: 0.93)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: max(geo.size.width * entry.sessionsFraction, 6), height: 4)
+                    }
+                }
+                .frame(height: 4)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(GlassCard(bgColor: WidgetColors.innerCardBg, borderColor: WidgetColors.innerCardBorder, cornerRadius: 14))
+    }
+    
+    private var pillColor: Color {
+        switch entry.protectionStatus {
+        case "Protected", "Done for today":
+            return WidgetTheme.riskColor(1)
+        default:
+            return WidgetTheme.riskColor(8)
         }
     }
 }
 
-struct UVWidget: Widget {
-    let kind: String = "UVWidget"
+// MARK: - Widget Entry View
 
+struct UVWidgetEntryView: View {
+    var entry: UVWidgetEntry
+    @Environment(\.widgetFamily) var family
+    
+    var body: some View {
+        let riskColor = WidgetTheme.riskColor(entry.uvIndex)
+        
+        ZStack {
+            // Glass Background Layer
+            Color.white.opacity(0.08)
+            
+            // Glow Effect
+            RadialGradient(
+                gradient: Gradient(colors: [WidgetTheme.glowColor(entry.uvIndex), Color.clear]),
+                center: family == .systemSmall ? .topLeading : .leading,
+                startRadius: 0,
+                endRadius: family == .systemSmall ? 80 : 100
+            )
+            
+            // Subtle Glass Overlay
+            LinearGradient(
+                colors: [Color.white.opacity(0.06), Color.clear],
+                startPoint: .topLeading,
+                endPoint: .center
+            )
+            
+            // Content
+            if family == .systemSmall {
+                SmallWidgetView(entry: entry, riskColor: riskColor)
+            } else {
+                MediumWidgetView(entry: entry, riskColor: riskColor)
+            }
+        }
+    }
+}
+
+// MARK: - Widget
+
+struct UVProtectorWidget: Widget {
+    let kind = "UVProtectorWidget"
+    
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+        StaticConfiguration(kind: kind, provider: UVWidgetProvider()) { entry in
             UVWidgetEntryView(entry: entry)
+                .background(Color.white.opacity(0.08))
         }
         .configurationDisplayName("UV Protector")
-        .description("Stay safe with real-time UV and SPF monitoring.")
+        .description("Real-time UV index and SPF timer.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

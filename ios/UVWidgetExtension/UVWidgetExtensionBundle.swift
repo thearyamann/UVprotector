@@ -11,8 +11,6 @@ import SwiftUI
 @main
 struct UVWidgetExtensionBundle: WidgetBundle {
     var body: some Widget {
-        UVWidget()
-        // UVWidgetExtensionControl() // Requires iOS 18.0+
-        // UVWidgetExtensionLiveActivity() // Requires iOS 16.1+
+        UVProtectorWidget()
     }
 }
