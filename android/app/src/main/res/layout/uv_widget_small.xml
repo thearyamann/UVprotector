@@ -1,13 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  Small Widget (2×2) — matched to uv_widget_premium_mockup_v2.html
+  Changes from previous version:
+    • padding: 16dp → 14dp  (HTML line 73: padding:14px)
+    • UV number: 56sp → 52sp  (HTML line 76: font-size:52px)
+    • Timer card padding: 12dp/10dp → 10dp/7dp  (HTML line 81: padding:7px 10px)
+    • Timer font: 12sp → 11sp  (HTML line 83: font-size:11px)
+    • Message card padding: 12dp/10dp → 9dp/7dp  (HTML line 91: padding:7px 9px)
+    • Message line1: 10sp → 9sp  (HTML line 96: font-size:9px)
+    • Message line2: 9sp → 8sp  (HTML line 97: font-size:8px)
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:padding="14dp"
     android:background="@drawable/widget_glass_bg_transparent">
 
-    <!-- Header Row -->
+    <!-- Header Row: sun icon + "UV INDEX" label + risk pill -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -27,17 +39,19 @@
                 android:src="@drawable/ic_sun"
                 android:alpha="0.7"/>
 
+            <!-- "UV INDEX" 8sp bold tracking 1.2 rgba(255,255,255,0.30) — HTML line 184 -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="5dp"
                 android:text="UV INDEX"
-                android:textColor="#59FFFFFF"
+                android:textColor="#4DFFFFFF"
                 android:textSize="8sp"
                 android:textStyle="bold"
-                android:letterSpacing="1.5"/>
+                android:letterSpacing="0.12"/>
         </LinearLayout>
 
+        <!-- Risk pill — HTML lines 63-70 -->
         <TextView
             android:id="@+id/sw_pill_text"
             android:layout_width="wrap_content"
@@ -46,67 +60,63 @@
             android:textColor="#f97316"
             android:textSize="9sp"
             android:textStyle="bold"
-            android:letterSpacing="0.8"
-            android:paddingStart="10dp"
+            android:letterSpacing="0.08"
+            android:paddingStart="8dp"
             android:paddingEnd="10dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
             android:background="@drawable/pill_bg_high"/>
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"/>
-
-    <!-- UV Number -->
+    <!-- UV Number — HTML line 76: 52px bold tracking -3px -->
     <TextView
         android:id="@+id/sw_uv_number"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:text="6"
         android:textColor="#f97316"
-        android:textSize="56sp"
+        android:textSize="52sp"
         android:textStyle="bold"
-        android:letterSpacing="-4"
-        android:includeFontPadding="false"/>
+        android:gravity="bottom"
+        android:includeFontPadding="false"
+        android:paddingTop="2dp"
+        android:paddingBottom="4dp"/>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"/>
-
-    <!-- Timer Card -->
+    <!-- Timer Card — HTML line 81: padding:7px 10px, border-radius:10px -->
     <LinearLayout
         android:id="@+id/sw_timer_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
-        android:background="@drawable/inner_card_bg">
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:background="@drawable/inner_card_small_bg">
 
+        <!-- Shield/star icon — HTML: 12×12 shield star SVG -->
         <ImageView
-            android:layout_width="14dp"
-            android:layout_height="14dp"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
             android:src="@drawable/ic_shield"
-            android:alpha="0.6"/>
+            android:alpha="0.55"/>
 
+        <!-- Timer text — HTML line 83: 11px weight 600 monospace rgba(255,255,255,0.85) -->
         <TextView
             android:id="@+id/sw_timer_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="6dp"
             android:text="01:22"
-            android:textColor="#EBFFFFFF"
-            android:textSize="12sp"
+            android:textColor="#D9FFFFFF"
+            android:textSize="11sp"
             android:textStyle="bold"
             android:fontFamily="monospace"/>
 
+        <!-- Sub label — HTML line 84: 9px rgba(255,255,255,0.38) -->
         <TextView
             android:id="@+id/sw_timer_sub"
             android:layout_width="wrap_content"
@@ -116,33 +126,36 @@
             android:textSize="9sp"/>
     </LinearLayout>
 
-    <!-- Low UV Card -->
+    <!-- Low UV Message Card — HTML lines 87-97: green tint, 7px 9px padding -->
     <LinearLayout
         android:id="@+id/sw_message_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:visibility="gone"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
-        android:background="@drawable/inner_card_green_bg">
+        android:paddingStart="9dp"
+        android:paddingEnd="9dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:background="@drawable/inner_card_green_small_bg">
 
+        <!-- Line 1 — HTML line 96: 9px weight 600 #4ade80 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="No cream needed"
             android:textColor="#4ade80"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:textStyle="bold"/>
 
+        <!-- Line 2 — HTML line 97: 8px rgba(255,255,255,0.38) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
+            android:layout_marginTop="2dp"
             android:text="Check when heading outside"
             android:textColor="#61FFFFFF"
-            android:textSize="9sp"/>
+            android:textSize="8sp"/>
     </LinearLayout>
+
 </LinearLayout>

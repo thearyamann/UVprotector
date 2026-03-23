@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Small widget bottom timer card: rgba(255,255,255,0.06) bg, rgba(255,255,255,0.08) border, r=10dp -->
+<!-- HTML line 81: background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.08); border-radius:10px -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#124ade80"/>
-    <stroke android:width="0.5dp" android:color="#334ade80"/>
+    <solid android:color="#0FFFFFFF"/>
+    <stroke android:width="0.5dp" android:color="#14FFFFFF"/>
     <corners android:radius="10dp"/>
 </shape>
