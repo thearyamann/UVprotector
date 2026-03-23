@@ -18,6 +18,7 @@ class WidgetService {
       bool timerRunning = false;
       DateTime? timerEndTime;
       String protectionStatus = 'Not Applied';
+      int timerProgressPercent = 0;
       int sessionsCompleted = 0;
       int sessionsTotal = 0;
 
@@ -32,19 +33,33 @@ class WidgetService {
             session['lockedReapplyMinutes'] as int? ??
             session['reapplyMinutes'] as int? ??
             0;
+        final isOutdoor = session['isOutdoor'] as bool? ?? true;
+        final remainingOutdoorSeconds =
+            (session['remainingOutdoorSeconds'] as num?)?.toDouble();
 
         if (sessionsCompleted > 0 && sessionsCompleted < sessionsTotal) {
-          timerRunning = true;
-          final endMs = lastApplied + (reapplyMins * 60 * 1000);
-          timerEndTime = DateTime.fromMillisecondsSinceEpoch(endMs);
+          final rate = isOutdoor ? 1.0 : (1.0 / 3.0);
+          final totalSeconds = reapplyMins * 60.0 / rate;
 
-          final nowMs = DateTime.now().millisecondsSinceEpoch;
-          final minsLeft = (endMs - nowMs) / (1000 * 60);
+          double secondsLeft;
+          if (remainingOutdoorSeconds != null) {
+            secondsLeft = remainingOutdoorSeconds / rate;
+          } else {
+            final endMs = lastApplied + (reapplyMins * 60 * 1000);
+            final nowMs = DateTime.now().millisecondsSinceEpoch;
+            secondsLeft = (endMs - nowMs) / 1000.0;
+          }
 
-          if (minsLeft > 15) {
-            protectionStatus = 'Protected';
-          } else if (minsLeft > 0) {
-            protectionStatus = 'Expiring Soon';
+          secondsLeft = secondsLeft.clamp(0.0, totalSeconds);
+
+          if (secondsLeft > 0 && totalSeconds > 0) {
+            timerRunning = true;
+            timerEndTime = DateTime.now().add(
+              Duration(milliseconds: (secondsLeft * 1000).round()),
+            );
+            final ratio = (secondsLeft / totalSeconds).clamp(0.0, 1.0);
+            timerProgressPercent = (ratio * 100).round();
+            protectionStatus = ratio <= 0.2 ? 'Expiring Soon' : 'Protected';
           } else {
             protectionStatus = 'Not Applied';
           }
@@ -61,9 +76,10 @@ class WidgetService {
         protectionStatus = 'UV is low';
         timerRunning = false;
         timerEndTime = null;
+        timerProgressPercent = 0;
       }
 
-      final burnTime = '${uvData.burnTimeMinutes} mins';
+      final burnTime = _formatBurnTime(uvData.burnTimeMinutes);
       final sessionsText = '$sessionsCompleted/$sessionsTotal';
 
       await _push(
@@ -72,6 +88,7 @@ class WidgetService {
         burnTime: burnTime,
         timerRunning: timerRunning,
         timerEndTime: timerEndTime,
+        timerProgressPercent: timerProgressPercent,
         sessionsText: sessionsText,
         protectionStatus: protectionStatus,
       );
@@ -80,12 +97,103 @@ class WidgetService {
     }
   }
 
+  static Future<void> pushTestData({
+    required int uvIndex,
+    required String uvStatus,
+    required String burnTime,
+    required bool timerRunning,
+    required DateTime? timerEndTime,
+    required int timerProgressPercent,
+    required String sessionsText,
+    required String protectionStatus,
+  }) async {
+    await _push(
+      uvIndex: uvIndex,
+      uvStatus: uvStatus,
+      burnTime: burnTime,
+      timerRunning: timerRunning,
+      timerEndTime: timerEndTime,
+      timerProgressPercent: timerProgressPercent,
+      sessionsText: sessionsText,
+      protectionStatus: protectionStatus,
+    );
+  }
+
+  static Future<void> pushLowUvTest() async {
+    await pushTestData(
+      uvIndex: 1,
+      uvStatus: 'Low',
+      burnTime: '1 hr 10 min',
+      timerRunning: false,
+      timerEndTime: null,
+      timerProgressPercent: 0,
+      sessionsText: '0/0',
+      protectionStatus: 'UV is low',
+    );
+  }
+
+  static Future<void> pushModerateUvTest() async {
+    await pushTestData(
+      uvIndex: 5,
+      uvStatus: 'Moderate',
+      burnTime: '1 hr 12 min',
+      timerRunning: true,
+      timerEndTime: DateTime.now().add(const Duration(hours: 1, minutes: 12)),
+      timerProgressPercent: 67,
+      sessionsText: '1/3',
+      protectionStatus: 'Protected',
+    );
+  }
+
+  static Future<void> pushHighUvTest() async {
+    await pushTestData(
+      uvIndex: 8,
+      uvStatus: 'Very High',
+      burnTime: '18 min',
+      timerRunning: true,
+      timerEndTime: DateTime.now().add(const Duration(minutes: 18)),
+      timerProgressPercent: 20,
+      sessionsText: '2/3',
+      protectionStatus: 'Expiring Soon',
+    );
+  }
+
+  static Future<void> clearTestData() async {
+    await pushTestData(
+      uvIndex: 0,
+      uvStatus: 'Low',
+      burnTime: 'No burn risk',
+      timerRunning: false,
+      timerEndTime: null,
+      timerProgressPercent: 0,
+      sessionsText: '0/0',
+      protectionStatus: 'UV is low',
+    );
+  }
+
+  static String _formatBurnTime(double burnTimeMinutes) {
+    if (burnTimeMinutes == double.infinity) return 'No burn risk';
+
+    final totalMinutes = burnTimeMinutes.round();
+    if (totalMinutes < 60) {
+      return '$totalMinutes min';
+    }
+
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (minutes == 0) {
+      return '$hours hr';
+    }
+    return '$hours hr $minutes min';
+  }
+
   static Future<void> _push({
     required int uvIndex,
     required String uvStatus,
     required String burnTime,
     required bool timerRunning,
     required DateTime? timerEndTime,
+    required int timerProgressPercent,
     required String sessionsText,
     required String protectionStatus,
   }) async {
@@ -98,6 +206,10 @@ class WidgetService {
       await HomeWidget.saveWidgetData<String>('uv_status', uvStatus);
       await HomeWidget.saveWidgetData<String>('burn_time', burnTime);
       await HomeWidget.saveWidgetData<bool>('timer_running', timerRunning);
+      await HomeWidget.saveWidgetData<int>(
+        'timer_progress_percent',
+        timerProgressPercent,
+      );
       await HomeWidget.saveWidgetData<String>('sessions_text', sessionsText);
       await HomeWidget.saveWidgetData<String>(
         'protection_status',

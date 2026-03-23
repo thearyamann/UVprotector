@@ -35,6 +35,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         val burnTime = widgetData.getString("burn_time", "0 mins") ?: "0 mins"
         val timerRunning = widgetData.getBoolean("timer_running", false)
         val timerEndMs = widgetData.getLong("timer_end_time", 0L)
+        val timerProgressPercent = widgetData.getInt("timer_progress_percent", 0)
         val sessionsText = widgetData.getString("sessions_text", "0/0") ?: "0/0"
         val protectionStatus = widgetData.getString("protection_status", "Not Applied") ?: "Not Applied"
         val isLow = uvIndex <= 2
@@ -50,7 +51,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         if (isSmall) {
             updateSmallWidget(context, appWidgetManager, appWidgetId, uvIndex, uvStatus, timerRunning, timerEndMs, protectionStatus, isLow)
         } else {
-            updateMediumWidget(context, appWidgetManager, appWidgetId, uvIndex, uvStatus, burnTime, timerRunning, timerEndMs, sessionsCompleted, sessionsTotal, protectionStatus, isLow)
+            updateMediumWidget(context, appWidgetManager, appWidgetId, uvIndex, uvStatus, burnTime, timerRunning, timerEndMs, timerProgressPercent, sessionsCompleted, sessionsTotal, protectionStatus, isLow)
         }
     }
 
@@ -108,6 +109,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         burnTime: String,
         timerRunning: Boolean,
         timerEndMs: Long,
+        timerProgressPercent: Int,
         sessionsCompleted: Int,
         sessionsTotal: Int,
         protectionStatus: String,
@@ -152,8 +154,8 @@ class UVWidgetProvider : HomeWidgetProvider() {
             }
 
             views.setTextViewText(R.id.mw_sessions_label, "$sessionsCompleted / $sessionsTotal Sessions")
-            val fraction = if (sessionsTotal > 0) sessionsCompleted.toFloat() / sessionsTotal else 0f
-            views.setImageViewBitmap(R.id.mw_sessions_bar, drawSessionsBar(fraction, 400, 12))
+            val fraction = (timerProgressPercent.coerceIn(0, 100) / 100f)
+            views.setImageViewBitmap(R.id.mw_sessions_bar, drawTimerBar(fraction, 400, 12))
         }
 
         updateWidgetClick(context, views)
@@ -173,7 +175,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         uvIndex <= 2 -> Color.parseColor("#4ade80")
         uvIndex <= 5 -> Color.parseColor("#fbbf24")
         uvIndex <= 7 -> Color.parseColor("#f97316")
-        else -> Color.parseColor("#f87171")
+        else -> Color.parseColor("#b91c1c")
     }
 
     private fun drawRing(uvIndex: Int, color: Int, sizePx: Int): Bitmap {
@@ -209,7 +211,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         return bmp
     }
 
-    private fun drawSessionsBar(fraction: Float, w: Int, h: Int): Bitmap {
+    private fun drawTimerBar(fraction: Float, w: Int, h: Int): Bitmap {
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val r = h / 2f
@@ -221,9 +223,11 @@ class UVWidgetProvider : HomeWidgetProvider() {
 
         val fillW = (w * fraction).coerceAtLeast(8f)
         val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(0f, 0f, fillW, 0f,
-                Color.parseColor("#4ade80"), Color.parseColor("#22d3ee"),
-                Shader.TileMode.CLAMP)
+            color = when {
+                fraction > 0.5f -> Color.parseColor("#16a34a")
+                fraction > 0.2f -> Color.parseColor("#eab308")
+                else -> Color.parseColor("#ef4444")
+            }
         }
         canvas.drawRoundRect(RectF(0f, 0f, fillW, h.toFloat()), r, r, fillPaint)
         return bmp

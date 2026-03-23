@@ -11,6 +11,19 @@ extension WidgetConfiguration {
     }
 }
 
+extension View {
+    @ViewBuilder
+    func widgetBackgroundCompat() -> some View {
+        if #available(iOSApplicationExtension 17.0, *) {
+            self.containerBackground(for: .widget) {
+                Color.black.opacity(0.92)
+            }
+        } else {
+            self.background(Color.black.opacity(0.92))
+        }
+    }
+}
+
 // MARK: - Data Model
 
 struct UVWidgetEntry: TimelineEntry {
@@ -20,6 +33,7 @@ struct UVWidgetEntry: TimelineEntry {
     let burnTime: String
     let timerRunning: Bool
     let timerEndTime: Date?
+    let timerProgressPercent: Int
     let sessionsText: String
     let protectionStatus: String
 
@@ -33,9 +47,8 @@ struct UVWidgetEntry: TimelineEntry {
         Int(sessionsText.split(separator: "/").last ?? "0") ?? 0
     }
 
-    var sessionsFraction: Double {
-        guard sessionsTotal > 0 else { return 0 }
-        return min(max(Double(sessionsCompleted) / Double(sessionsTotal), 0), 1)
+    var timerProgress: Double {
+        min(max(Double(timerProgressPercent) / 100.0, 0), 1)
     }
 
     var timerLabel: String {
@@ -84,33 +97,33 @@ enum WidgetTheme {
     static let cyan = Color(red: 0.13, green: 0.83, blue: 0.93)
     static let amber = Color(red: 0.98, green: 0.75, blue: 0.14)
     static let orange = Color(red: 0.98, green: 0.45, blue: 0.09)
-    static let red = Color(red: 0.97, green: 0.44, blue: 0.44)
+    static let red = Color(red: 0.78, green: 0.17, blue: 0.17)
 
     static func palette(for index: Int) -> WidgetPalette {
         switch index {
-        case ...2:
+        case ...3:
             return WidgetPalette(
                 primary: green,
-                ringEnd: cyan,
-                glow: green.opacity(0.30),
+                ringEnd: green,
+                glow: Color.clear,
                 pillFill: green.opacity(0.15),
                 pillStroke: green.opacity(0.35)
             )
-        case 3...5:
+        case 4...5:
             return WidgetPalette(
                 primary: amber,
-                ringEnd: orange,
-                glow: amber.opacity(0.24),
+                ringEnd: amber,
+                glow: Color.clear,
                 pillFill: amber.opacity(0.16),
                 pillStroke: amber.opacity(0.35)
             )
         default:
             return WidgetPalette(
-                primary: orange,
+                primary: red,
                 ringEnd: red,
-                glow: orange.opacity(0.26),
-                pillFill: orange.opacity(0.16),
-                pillStroke: orange.opacity(0.35)
+                glow: Color.clear,
+                pillFill: red.opacity(0.16),
+                pillStroke: red.opacity(0.35)
             )
         }
     }
@@ -149,17 +162,6 @@ struct WidgetGlassCard<Content: View>: View {
                         endPoint: .center
                     )
                 )
-
-            RadialGradient(
-                colors: [glowColor, Color.clear],
-                center: .center,
-                startRadius: 4,
-                endRadius: 110
-            )
-            .frame(width: 150, height: 100)
-            .blur(radius: 6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: glowAlignment)
-            .offset(y: -24)
 
             content
         }
@@ -245,6 +247,12 @@ struct WidgetCountdownText: View {
 struct WidgetProgressBar: View {
     let progress: Double
 
+    var fillColor: Color {
+        if progress > 0.5 { return WidgetTheme.green }
+        if progress > 0.2 { return WidgetTheme.amber }
+        return WidgetTheme.red
+    }
+
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
@@ -252,13 +260,7 @@ struct WidgetProgressBar: View {
                     .fill(Color.white.opacity(0.12))
 
                 Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [WidgetTheme.green, WidgetTheme.cyan],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
+                    .fill(fillColor)
                     .frame(width: max(18, geo.size.width * progress))
             }
         }
@@ -313,6 +315,7 @@ struct UVWidgetProvider: TimelineProvider {
             burnTime: "11 mins",
             timerRunning: true,
             timerEndTime: Date().addingTimeInterval(3600),
+            timerProgressPercent: 75,
             sessionsText: "1/3",
             protectionStatus: "Protected"
         )
@@ -344,6 +347,7 @@ struct UVWidgetProvider: TimelineProvider {
                 let ms = ud?.integer(forKey: "timer_end_time") ?? 0
                 return ms > 0 ? Date(timeIntervalSince1970: Double(ms) / 1000.0) : nil
             }(),
+            timerProgressPercent: ud?.integer(forKey: "timer_progress_percent") ?? 0,
             sessionsText: ud?.string(forKey: "sessions_text") ?? "0/0",
             protectionStatus: ud?.string(forKey: "protection_status") ?? "Not Applied"
         )
@@ -399,7 +403,7 @@ struct SmallLowCard: View {
 
             Text("Check when heading outside")
                 .font(.system(size: 7.5))
-                .foregroundColor(Color.white.opacity(0.42))
+                .foregroundColor(WidgetTheme.textSecondary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -582,7 +586,7 @@ struct MediumActivePanel: View {
 
             Spacer(minLength: 6)
 
-            WidgetProgressBar(progress: entry.sessionsFraction)
+            WidgetProgressBar(progress: entry.timerProgress)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
@@ -608,8 +612,6 @@ struct UVWidgetEntryView: View {
         let palette = WidgetTheme.palette(for: entry.uvIndex)
 
         ZStack {
-            Color.black.opacity(0.92)
-
             if family == .systemSmall {
                 SmallWidgetView(entry: entry, palette: palette)
             } else {
@@ -617,6 +619,7 @@ struct UVWidgetEntryView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .widgetBackgroundCompat()
     }
 }
 

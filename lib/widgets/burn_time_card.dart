@@ -10,28 +10,26 @@ class BurnTimeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final burn  = uvData?.burnTimeMinutes;
-    final risk  = uvData?.riskLevel;
+    final burn = uvData?.burnTimeMinutes;
+    final risk = uvData?.riskLevel;
     final color = AppTheme.riskColor(risk);
 
     final bool isUnlimited = burn == double.infinity;
-    final bool noData      = burn == null;
+    final bool noData = burn == null;
 
-    final String mainText = noData ? '--'
-        : isUnlimited ? 'Safe'
-        : burn.toStringAsFixed(0);
+    final ({String value, String unit}) burnDisplay = _buildBurnDisplay(
+      burn,
+      noData: noData,
+      isUnlimited: isUnlimited,
+    );
 
-    final String subText = noData ? ''
-        : isUnlimited ? ' all day'
-        : ' min';
-
-    final String riskText = noData ? '—'
-        : isUnlimited ? 'No burn risk'
+    final String riskText = noData
+        ? '—'
+        : isUnlimited
+        ? 'No burn risk'
         : '$risk risk';
 
-    final Color riskColor = isUnlimited
-        ? const Color(0xFF16A34A)
-        : color;
+    final Color riskColor = isUnlimited ? const Color(0xFF16A34A) : color;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
@@ -46,7 +44,7 @@ class BurnTimeCard extends StatelessWidget {
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: mainText,
+                  text: burnDisplay.value,
                   style: TextStyle(
                     fontSize: isUnlimited ? 26 : 28,
                     fontWeight: FontWeight.w300,
@@ -54,9 +52,9 @@ class BurnTimeCard extends StatelessWidget {
                     height: 1,
                   ),
                 ),
-                if (subText.isNotEmpty)
+                if (burnDisplay.unit.isNotEmpty)
                   TextSpan(
-                    text: subText,
+                    text: burnDisplay.unit,
                     style: AppTheme.unitText(isDark),
                   ),
               ],
@@ -74,5 +72,27 @@ class BurnTimeCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  ({String value, String unit}) _buildBurnDisplay(
+    double? burn, {
+    required bool noData,
+    required bool isUnlimited,
+  }) {
+    if (noData) return (value: '--', unit: '');
+    if (isUnlimited) return (value: 'Safe', unit: ' all day');
+
+    final totalMinutes = burn!.round();
+    if (totalMinutes < 60) {
+      return (value: '$totalMinutes', unit: ' min');
+    }
+
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (minutes == 0) {
+      return (value: '$hours', unit: ' hr');
+    }
+
+    return (value: '$hours hr', unit: ' $minutes min');
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/uv_controller.dart';
 import '../services/weather_service.dart';
@@ -257,6 +258,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                     AdviceCard(uvData: _uvData, isDark: isDark),
 
+                    if (kDebugMode) ...[
+                      SizedBox(height: verticalGap),
+                      _buildWidgetTestPanel(isDark),
+                    ],
+
                     if (_errorMessage != null)
                       Padding(
                         padding: EdgeInsets.only(top: verticalGap),
@@ -352,6 +358,105 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildWidgetTestPanel(bool isDark) {
+    final actions = <({
+      String label,
+      Future<void> Function() onTap,
+      Color color,
+    })>[
+      (
+        label: 'Fake Low UV',
+        onTap: WidgetService.pushLowUvTest,
+        color: const Color(0xFF35D67C),
+      ),
+      (
+        label: 'Fake Moderate',
+        onTap: WidgetService.pushModerateUvTest,
+        color: const Color(0xFFF1C64B),
+      ),
+      (
+        label: 'Fake High UV',
+        onTap: WidgetService.pushHighUvTest,
+        color: const Color(0xFFFF6B5E),
+      ),
+      (
+        label: 'Clear Test',
+        onTap: WidgetService.clearTestData,
+        color: AppTheme.textSecondary(isDark),
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg(isDark),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.cardBorder(isDark),
+          width: 0.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Widget Test Panel',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary(isDark),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Debug only. Push fake widget values without changing live weather data.',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondary(isDark),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: actions.map((action) {
+              return Pressable(
+                onTap: () async {
+                  await action.onTap();
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${action.label} applied to widget')),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: action.color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: action.color.withValues(alpha: 0.35),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Text(
+                    action.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: action.color,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
