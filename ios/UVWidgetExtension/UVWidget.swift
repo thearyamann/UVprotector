@@ -170,6 +170,7 @@ struct WidgetGlassCard<Content: View>: View {
 
 struct UVSunLabel: View {
     let compact: Bool
+    var singleLine: Bool = false
 
     var body: some View {
         HStack(spacing: compact ? 7 : 8) {
@@ -180,6 +181,10 @@ struct UVSunLabel: View {
             if compact {
                 Text("UV")
                     .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(WidgetTheme.headerText)
+            } else if singleLine {
+                Text("UV INDEX")
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundColor(WidgetTheme.headerText)
             } else {
                 VStack(alignment: .leading, spacing: -1) {
@@ -394,7 +399,7 @@ struct SmallLowCard: View {
 
             Text("Check when heading outside")
                 .font(.system(size: 7.5))
-                .foregroundColor(WidgetTheme.textMuted)
+                .foregroundColor(Color.white.opacity(0.42))
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -455,29 +460,27 @@ struct MediumWidgetView: View {
     var body: some View {
         WidgetGlassCard(cornerRadius: 28, glowColor: palette.glow, glowAlignment: .top) {
             HStack(spacing: 12) {
-                VStack(spacing: 0) {
-                    UVSunLabel(compact: false)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                VStack(alignment: .leading, spacing: 0) {
+                    UVSunLabel(compact: false, singleLine: true)
+                        .padding(.leading, 2)
+                        .padding(.top, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Spacer(minLength: 6)
+                    Spacer(minLength: 4)
 
                     WidgetRingView(
                         value: entry.uvIndex,
                         palette: palette,
-                        size: 76,
+                        size: 72,
                         lineWidth: 7,
                         fontSize: 26
                     )
                     .frame(maxWidth: .infinity, alignment: .center)
 
-                    Spacer(minLength: 8)
+                    Spacer(minLength: -2)
 
                     HStack(spacing: 6) {
-                        Image(systemName: "drop.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color.white.opacity(0.48))
-
-                        Text("Burn in")
+                        Text("Burn in:")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(WidgetTheme.textSecondary)
 
@@ -487,7 +490,8 @@ struct MediumWidgetView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)
                     }
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.leading, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(width: 108)
 
