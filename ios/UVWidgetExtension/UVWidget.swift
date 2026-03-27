@@ -97,7 +97,7 @@ enum WidgetTheme {
     static let cyan = Color(red: 0.13, green: 0.83, blue: 0.93)
     static let amber = Color(red: 0.98, green: 0.75, blue: 0.14)
     static let orange = Color(red: 0.98, green: 0.45, blue: 0.09)
-    static let red = Color(red: 0.78, green: 0.17, blue: 0.17)
+    static let red = Color(red: 0.976, green: 0.455, blue: 0.106)
 
     static func palette(for index: Int) -> WidgetPalette {
         switch index {

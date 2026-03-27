@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'notification_history_service.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -30,16 +31,14 @@ class NotificationService {
     if (Platform.isIOS) {
       await _notifications
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
     } else if (Platform.isAndroid) {
       await _notifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
     }
   }
@@ -68,6 +67,10 @@ class NotificationService {
       iOS: iosDetails,
     );
 
+    await NotificationHistoryService.recordNotification(
+      title: title,
+      body: body,
+    );
     await _notifications.show(id, title, body, details);
   }
 

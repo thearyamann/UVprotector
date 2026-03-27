@@ -12,6 +12,10 @@ class PreferencesService {
   static const String _keyTotalSessions = 'total_sessions';
   static const String _keyCurrentSession = 'current_session';
   static const String _keyLastUvAlert = 'last_uv_alert';
+  static const String _keyLastReapplyAlertSession = 'last_reapply_alert_session';
+  static const String _keyLastHighUvAlertDate = 'last_high_uv_alert_date';
+  static const String _keyLastUvRiseAlertSignature =
+      'last_uv_rise_alert_signature';
 
   static Future<void> savePreferences(UserPreferences prefs) async {
     final store = await SharedPreferences.getInstance();
@@ -87,5 +91,35 @@ class PreferencesService {
   static Future<double> loadLastUvAlert() async {
     final store = await SharedPreferences.getInstance();
     return store.getDouble(_keyLastUvAlert) ?? 0.0;
+  }
+
+  static Future<void> saveLastReapplyAlertSession(int sessionNumber) async {
+    final store = await SharedPreferences.getInstance();
+    await store.setInt(_keyLastReapplyAlertSession, sessionNumber);
+  }
+
+  static Future<int?> loadLastReapplyAlertSession() async {
+    final store = await SharedPreferences.getInstance();
+    return store.getInt(_keyLastReapplyAlertSession);
+  }
+
+  static Future<void> saveLastHighUvAlertDate(String dateKey) async {
+    final store = await SharedPreferences.getInstance();
+    await store.setString(_keyLastHighUvAlertDate, dateKey);
+  }
+
+  static Future<String?> loadLastHighUvAlertDate() async {
+    final store = await SharedPreferences.getInstance();
+    return store.getString(_keyLastHighUvAlertDate);
+  }
+
+  static Future<void> saveLastUvRiseAlertSignature(String signature) async {
+    final store = await SharedPreferences.getInstance();
+    await store.setString(_keyLastUvRiseAlertSignature, signature);
+  }
+
+  static Future<String?> loadLastUvRiseAlertSignature() async {
+    final store = await SharedPreferences.getInstance();
+    return store.getString(_keyLastUvRiseAlertSignature);
   }
 }

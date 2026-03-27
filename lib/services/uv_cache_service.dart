@@ -103,6 +103,23 @@ class UVCacheService {
     await store.setString(_keySessionData, jsonEncode(map));
   }
 
+  /// Persist current timer progress without resetting the session start time.
+  static Future<void> syncSessionProgress({
+    required bool isOutdoor,
+    required double remainingOutdoorSeconds,
+  }) async {
+    final store = await SharedPreferences.getInstance();
+    final raw = store.getString(_keySessionData);
+    if (raw == null) return;
+
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    map['isOutdoor'] = isOutdoor;
+    map['remainingOutdoorSeconds'] = remainingOutdoorSeconds;
+    map['lastUpdatedAt'] = DateTime.now().millisecondsSinceEpoch;
+
+    await store.setString(_keySessionData, jsonEncode(map));
+  }
+
   static Future<Map<String, dynamic>?> loadSessionData() async {
     final store = await SharedPreferences.getInstance();
     final raw = store.getString(_keySessionData);

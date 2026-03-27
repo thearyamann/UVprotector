@@ -7,15 +7,18 @@ import 'models/user_preferences.dart';
 import 'models/skin_type.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 import 'theme/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor:          Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
 
   try {
     await NotificationService.init();
@@ -25,8 +28,8 @@ void main() async {
   } catch (_) {}
 
   final onboardingDone = await PreferencesService.isOnboardingDone();
-  final prefs          = await PreferencesService.loadPreferences();
-  final isDark         = await PreferencesService.loadIsDarkMode();
+  final prefs = await PreferencesService.loadPreferences();
+  final isDark = await PreferencesService.loadIsDarkMode();
 
   final themeController = ThemeController(isDark: isDark);
 
@@ -34,7 +37,7 @@ void main() async {
     ThemeControllerProvider(
       controller: themeController,
       child: UVProtectorApp(
-        showOnboarding:   !onboardingDone,
+        showOnboarding: !onboardingDone,
         savedPreferences: prefs,
       ),
     ),
@@ -65,10 +68,12 @@ class _UVProtectorAppState extends State<UVProtectorApp> {
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeController.of(context).isDark;
-    
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-    ));
+
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      ),
+    );
 
     return AnimatedTheme(
       duration: const Duration(milliseconds: 400),
@@ -76,17 +81,21 @@ class _UVProtectorAppState extends State<UVProtectorApp> {
           ? ThemeData.dark(useMaterial3: true)
           : ThemeData.light(useMaterial3: true),
       child: MaterialApp(
-        title:                      'UV Protector',
+        title: 'UV Protector',
         debugShowCheckedModeBanner: false,
-        themeMode:                  isDark ? ThemeMode.dark : ThemeMode.light,
-        theme:                      ThemeData.light(useMaterial3: true),
-        darkTheme:                  ThemeData.dark(useMaterial3: true),
-        home: widget.showOnboarding
-            ? const OnboardingScreen()
-            : HomeScreen(
-                initialSkinType: SkinType.fromType(widget.savedPreferences.skinTypeNumber),
-                initialSpf:      widget.savedPreferences.spf,
-              ),
+        themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+        theme: ThemeData.light(useMaterial3: true),
+        darkTheme: ThemeData.dark(useMaterial3: true),
+        home: SplashScreen(
+          nextScreen: widget.showOnboarding
+              ? const OnboardingScreen()
+              : HomeScreen(
+                  initialSkinType: SkinType.fromType(
+                    widget.savedPreferences.skinTypeNumber,
+                  ),
+                  initialSpf: widget.savedPreferences.spf,
+                ),
+        ),
       ),
     );
   }

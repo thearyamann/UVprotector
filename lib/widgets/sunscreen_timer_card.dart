@@ -23,7 +23,8 @@ class SunscreenTimerCard extends StatefulWidget {
   State<SunscreenTimerCard> createState() => _SunscreenTimerCardState();
 }
 
-class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
+class _SunscreenTimerCardState extends State<SunscreenTimerCard>
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   Timer? _ticker;
 
   int _sessionsCompleted = 0;
@@ -48,8 +49,12 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _init();
   }
+
+  @override
+  bool get wantKeepAlive => true;
 
   int get _calculatedTotalSessions {
     final uv = widget.uvData?.uvIndex ?? 0;
@@ -189,6 +194,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
           _remainingOutdoorSeconds = 0;
           _secondsLeft = 0;
         });
+        unawaited(_persistTimerProgress());
         return;
       }
 
@@ -197,8 +203,22 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
         _remainingOutdoorSeconds -= rate;
         _secondsLeft = (_remainingOutdoorSeconds / rate).toInt();
       });
+
+      // Checkpoints keep the countdown stable across app reload/restart
+      // without writing to storage every second.
+      if (_secondsLeft % 30 == 0) {
+        unawaited(_persistTimerProgress());
+      }
       _checkEscalation();
     });
+  }
+
+  Future<void> _persistTimerProgress() async {
+    if (_sessionsCompleted <= 0) return;
+    await UVCacheService.syncSessionProgress(
+      isOutdoor: _isOutdoor,
+      remainingOutdoorSeconds: _remainingOutdoorSeconds.clamp(0.0, double.infinity),
+    );
   }
 
   Future<void> _toggleMode(bool toOutdoor) async {
@@ -265,8 +285,20 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      unawaited(_persistTimerProgress());
+    }
+  }
+
+  @override
   void dispose() {
     _ticker?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_persistTimerProgress());
     super.dispose();
   }
 
@@ -336,6 +368,7 @@ class _SunscreenTimerCardState extends State<SunscreenTimerCard> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final sw = MediaQuery.of(context).size.width;
     final sh = MediaQuery.of(context).size.height;
     final uv = widget.uvData?.uvIndex ?? -1;

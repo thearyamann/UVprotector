@@ -1,0 +1,13 @@
+<svg width="1024" height="512" viewBox="0 0 1024 512" xmlns="http://www.w3.org/2000/svg">
+  <rect
+    x="124"
+    y="128"
+    width="776"
+    height="256"
+    rx="128"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="96"
+    stroke-linejoin="round"
+  />
+</svg>

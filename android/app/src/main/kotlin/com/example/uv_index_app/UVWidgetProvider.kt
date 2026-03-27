@@ -2,12 +2,15 @@ package com.example.uv_index_app
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
-import android.graphics.*
-import android.os.Build
-import android.os.SystemClock
+import android.content.SharedPreferences
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.SweepGradient
 import android.view.View
 import android.widget.RemoteViews
-import android.graphics.drawable.GradientDrawable
 import es.antonborri.home_widget.HomeWidgetProvider
 import kotlin.math.min
 
@@ -17,7 +20,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
-        widgetData: android.content.SharedPreferences
+        widgetData: SharedPreferences
     ) {
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId, widgetData)
@@ -28,7 +31,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int,
-        widgetData: android.content.SharedPreferences
+        widgetData: SharedPreferences
     ) {
         val uvIndex = widgetData.getInt("uv_index", 0)
         val uvStatus = widgetData.getString("uv_status", "Low") ?: "Low"
@@ -164,8 +167,11 @@ class UVWidgetProvider : HomeWidgetProvider() {
 
     private fun updateWidgetClick(context: Context, views: RemoteViews) {
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            ?: return
         val pi = android.app.PendingIntent.getActivity(
-            context, 0, launchIntent,
+            context,
+            0,
+            launchIntent,
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(android.R.id.background, pi)
@@ -175,10 +181,10 @@ class UVWidgetProvider : HomeWidgetProvider() {
         uvIndex <= 2 -> Color.parseColor("#4ade80")
         uvIndex <= 5 -> Color.parseColor("#fbbf24")
         uvIndex <= 7 -> Color.parseColor("#f97316")
-        else -> Color.parseColor("#b91c1c")
+        else -> Color.parseColor("#f9741b")
     }
 
-    private fun drawRing(uvIndex: Int, color: Int, sizePx: Int): Bitmap {
+    private fun drawRing(uvIndex: Int, ringColor: Int, sizePx: Int): Bitmap {
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val cx = sizePx / 2f
@@ -189,7 +195,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = strokeW
-            color = Color.argb(20, 255, 255, 255)
+            this.color = Color.argb(20, 255, 255, 255)
         }
         val oval = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
         canvas.drawArc(oval, -90f, 360f, false, trackPaint)
@@ -198,7 +204,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         val sweepAngle = progress * 360f
 
         val startColor = riskColor(maxOf(0, uvIndex - 2))
-        val gradient = SweepGradient(cx, cy, intArrayOf(startColor, color), null)
+        val gradient = SweepGradient(cx, cy, intArrayOf(startColor, ringColor), null)
 
         val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE

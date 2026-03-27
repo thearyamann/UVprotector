@@ -15,28 +15,33 @@ void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
     if (taskName == kUVRefreshTask) {
       try {
-        final prefs      = await PreferencesService.loadPreferences();
-        final location   = await LocationService().getCurrentLocation();
-        final city       = await GeocodingService.getCityName(location.latitude, location.longitude);
-        
+        await NotificationService.init();
+
+        final prefs = await PreferencesService.loadPreferences();
+        final location = await LocationService().getCurrentLocation();
+        final city = await GeocodingService.getCityName(
+          location.latitude,
+          location.longitude,
+        );
+
         final weatherResult = await WeatherService.fetchWeatherAndPeak(
-          latitude:  location.latitude,
+          latitude: location.latitude,
           longitude: location.longitude,
-          cityName:  city,
+          cityName: city,
         );
 
         final controller = UVController();
-        final data       = await controller.getCurrentUVData(
-          uvIndex:   weatherResult.currentUV,
-          latitude:  location.latitude,
+        final data = await controller.getCurrentUVData(
+          uvIndex: weatherResult.currentUV,
+          latitude: location.latitude,
           longitude: location.longitude,
           skinTypeNumber: prefs.skinTypeNumber,
         );
-        
+
         // Preserve peak hours from the weather result
         final finalData = data.copyWith(
           peakStart: weatherResult.peakStart,
-          peakEnd:   weatherResult.peakEnd,
+          peakEnd: weatherResult.peakEnd,
         );
 
         await UVCacheService.saveUVData(finalData);
@@ -44,52 +49,83 @@ void callbackDispatcher() {
 
         // --- Notification Logic ---
         final session = await UVCacheService.loadSessionData();
-        if (session != null) {
-          final int completed = session['sessionsCompleted'] as int;
-          final int total     = session['lockedTotalSessions'] as int? ?? session['totalSessions'] as int;
-          final int reapplyMins = session['lockedReapplyMinutes'] as int? ?? session['reapplyMinutes'] as int;
-          final int lastApplied = session['lastAppliedAt'] as int;
-          
-          final nowMs = DateTime.now().millisecondsSinceEpoch;
-          final elapsedMins = (nowMs - lastApplied) / (1000 * 60);
+        final completed = session?['sessionsCompleted'] as int? ?? 0;
+        final total =
+            session?['lockedTotalSessions'] as int? ??
+            session?['totalSessions'] as int? ??
+            0;
+        final isOutdoor = session?['isOutdoor'] as bool? ?? true;
 
-          // 1. Reapply Alert
-          if (completed < total && completed > 0) {
-            if (elapsedMins >= reapplyMins) {
-              final lastAlert = await PreferencesService.loadLastUvAlert();
-              if (lastAlert != completed.toDouble()) {
-                await NotificationService.showNotification(
-                  id: 1,
-                  title: 'Sunscreen Protection Expired 🧴',
-                  body: 'Time to reapply! You have ${total - completed} sessions left for today.',
-                );
-                await PreferencesService.saveLastUvAlert(completed.toDouble());
-              }
-            }
+        // 1. High UV Alert (Prompt first application)
+        if (completed == 0 && finalData.uvIndex >= 6) {
+          final todayKey = _todayKey();
+          final lastHighUvAlertDate =
+              await PreferencesService.loadLastHighUvAlertDate();
+          if (lastHighUvAlertDate != todayKey) {
+            await NotificationService.showNotification(
+              id: 2,
+              title: 'High UV Alert! ☀️',
+              body:
+                  'UV index is now ${finalData.uvIndex.toStringAsFixed(1)}. Apply sunscreen for protection.',
+            );
+            await PreferencesService.saveLastHighUvAlertDate(todayKey);
           }
+        }
 
-          // 2. High UV Alert (Prompt first application)
-          if (completed == 0 && finalData.uvIndex >= 6) {
-            final lastAlert = await PreferencesService.loadLastUvAlert();
-            if (lastAlert != 99.0) {
+        if (session != null) {
+          final reapplyMins =
+              session['lockedReapplyMinutes'] as int? ??
+              session['reapplyMinutes'] as int? ??
+              0;
+          final remainingOutdoorSeconds =
+              (session['remainingOutdoorSeconds'] as num?)?.toDouble() ?? 0.0;
+          final rate = isOutdoor ? 1.0 : (1.0 / 3.0);
+          final secondsLeft = remainingOutdoorSeconds / rate;
+
+          // 2. Reapply Alert
+          if (completed > 0 && completed < total && secondsLeft <= 0) {
+            final lastReapplyAlertSession =
+                await PreferencesService.loadLastReapplyAlertSession();
+            if (lastReapplyAlertSession != completed) {
               await NotificationService.showNotification(
-                id: 2,
-                title: 'High UV Alert! ☀️',
-                body: 'UV index is now ${finalData.uvIndex.toStringAsFixed(1)}. Apply sunscreen for protection.',
+                id: 1,
+                title: 'Sunscreen Protection Expired',
+                body:
+                    'Time to reapply! You have ${total - completed} sessions left for today.',
               );
-              await PreferencesService.saveLastUvAlert(99.0);
+              await PreferencesService.saveLastReapplyAlertSession(completed);
             }
           }
 
           // 3. UV Increase Alert (Already protected but UV jumped)
-          if (completed > 0 && session['isOutdoor'] == true) {
-            final double lockedUV = session['lockedUV'] as double? ?? 0.0;
-            if (finalData.uvIndex > lockedUV + 2.0) {
-              await NotificationService.showNotification(
-                id: 3,
-                title: 'UV Levels Rising 📈',
-                body: 'UV has increased significantly. Consider reapplying sooner or finding shade.',
-              );
+          if (completed > 0 && completed < total && isOutdoor) {
+            final double lockedUV = (session['lockedUV'] as num?)?.toDouble() ?? 0.0;
+            final bool protectionActive = secondsLeft > 0;
+            final bool uvRoseSharply = finalData.uvIndex > lockedUV + 2.0;
+            if (protectionActive && uvRoseSharply) {
+              final signature =
+                  '${_todayKey()}-$completed-${finalData.uvIndex.floor()}';
+              final lastSignature =
+                  await PreferencesService.loadLastUvRiseAlertSignature();
+              if (lastSignature != signature) {
+                await NotificationService.showNotification(
+                  id: 3,
+                  title: 'UV Levels Rising',
+                  body:
+                      'UV has increased significantly. Consider reapplying sooner or finding shade.',
+                );
+                await PreferencesService.saveLastUvRiseAlertSignature(
+                  signature,
+                );
+              }
+            }
+          }
+
+          // Legacy safety: clear stale one-key alert marker if older code stored it.
+          if (reapplyMins > 0) {
+            final lastAlert = await PreferencesService.loadLastUvAlert();
+            if (lastAlert != 0.0) {
+              await PreferencesService.saveLastUvAlert(0.0);
             }
           }
         }
@@ -97,6 +133,13 @@ void callbackDispatcher() {
     }
     return Future.value(true);
   });
+}
+
+String _todayKey() {
+  final now = DateTime.now();
+  final month = now.month.toString().padLeft(2, '0');
+  final day = now.day.toString().padLeft(2, '0');
+  return '${now.year}-$month-$day';
 }
 
 class BackgroundService {
