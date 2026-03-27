@@ -7,5 +7,4 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/uv_widget_small"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen"
-    android:widgetFeatures="reconfigurable"/>
+    android:widgetCategory="home_screen"/>

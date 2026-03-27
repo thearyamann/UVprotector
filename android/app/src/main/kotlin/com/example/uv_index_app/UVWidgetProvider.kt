@@ -3,6 +3,8 @@ package com.example.uv_index_app
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
+import android.os.SystemClock
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -14,7 +16,16 @@ import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
 import kotlin.math.min
 
-class UVWidgetProvider : HomeWidgetProvider() {
+open class UVWidgetProvider : HomeWidgetProvider() {
+
+    protected open fun shouldUseSmallLayout(
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int
+    ): Boolean {
+        val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+        val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
+        return minWidth > 0 && minWidth < 200
+    }
 
     override fun onUpdate(
         context: Context,
@@ -47,9 +58,7 @@ class UVWidgetProvider : HomeWidgetProvider() {
         val sessionsCompleted = sessionsParts.getOrNull(0)?.toIntOrNull() ?: 0
         val sessionsTotal = sessionsParts.getOrNull(1)?.toIntOrNull() ?: 0
 
-        val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
-        val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
-        val isSmall = minWidth > 0 && minWidth < 200
+        val isSmall = shouldUseSmallLayout(appWidgetManager, appWidgetId)
 
         if (isSmall) {
             updateSmallWidget(context, appWidgetManager, appWidgetId, uvIndex, uvStatus, timerRunning, timerEndMs, protectionStatus, isLow)
@@ -78,9 +87,12 @@ class UVWidgetProvider : HomeWidgetProvider() {
         views.setTextViewText(R.id.sw_pill_text, uvStatus.uppercase())
 
         if (isLow) {
+            views.setInt(R.id.sw_pill_text, "setBackgroundResource", R.drawable.pill_bg_green)
             views.setViewVisibility(R.id.sw_timer_card, View.GONE)
             views.setViewVisibility(R.id.sw_message_card, View.VISIBLE)
+            stopChronometer(views, R.id.sw_timer_text)
         } else {
+            views.setInt(R.id.sw_pill_text, "setBackgroundResource", R.drawable.pill_bg_high)
             views.setViewVisibility(R.id.sw_message_card, View.GONE)
             views.setViewVisibility(R.id.sw_timer_card, View.VISIBLE)
 
@@ -88,12 +100,11 @@ class UVWidgetProvider : HomeWidgetProvider() {
             val remainMs = timerEndMs - nowMs
 
             if (timerRunning && timerEndMs > nowMs) {
-                val mins = (remainMs / 60000).toInt()
-                val secs = ((remainMs % 60000) / 1000).toInt()
-                views.setTextViewText(R.id.sw_timer_text, String.format("%02d:%02d", mins, secs))
+                bindCountdownChronometer(views, R.id.sw_timer_text, remainMs)
                 val subLabel = if (protectionStatus == "Expiring Soon") "Expiring" else "Active"
                 views.setTextViewText(R.id.sw_timer_sub, subLabel)
             } else {
+                stopChronometer(views, R.id.sw_timer_text)
                 views.setTextViewText(R.id.sw_timer_text, "--:--")
                 views.setTextViewText(R.id.sw_timer_sub, "Ready")
             }
@@ -130,6 +141,11 @@ class UVWidgetProvider : HomeWidgetProvider() {
         if (isLow) {
             views.setViewVisibility(R.id.mw_active_panel, View.GONE)
             views.setViewVisibility(R.id.mw_low_panel, View.VISIBLE)
+            stopChronometer(views, R.id.mw_timer)
+            views.setTextViewText(
+                R.id.mw_low_sessions,
+                "$sessionsCompleted / $sessionsTotal Sessions"
+            )
         } else {
             views.setViewVisibility(R.id.mw_low_panel, View.GONE)
             views.setViewVisibility(R.id.mw_active_panel, View.VISIBLE)
@@ -146,12 +162,10 @@ class UVWidgetProvider : HomeWidgetProvider() {
             val nowMs = System.currentTimeMillis()
             val remainMs = timerEndMs - nowMs
             if (timerRunning && timerEndMs > nowMs) {
-                val h = (remainMs / 3600000).toInt()
-                val m = ((remainMs % 3600000) / 60000).toInt()
-                val s = ((remainMs % 60000) / 1000).toInt()
-                views.setTextViewText(R.id.mw_timer, String.format("%02d:%02d:%02d", h, m, s))
+                bindCountdownChronometer(views, R.id.mw_timer, remainMs)
                 views.setTextColor(R.id.mw_timer, Color.argb(235, 255, 255, 255))
             } else {
+                stopChronometer(views, R.id.mw_timer)
                 views.setTextViewText(R.id.mw_timer, "--:--:--")
                 views.setTextColor(R.id.mw_timer, Color.argb(76, 255, 255, 255))
             }
@@ -175,6 +189,26 @@ class UVWidgetProvider : HomeWidgetProvider() {
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(android.R.id.background, pi)
+    }
+
+    private fun bindCountdownChronometer(
+        views: RemoteViews,
+        viewId: Int,
+        remainingMs: Long
+    ) {
+        val safeRemainingMs = remainingMs.coerceAtLeast(0L)
+        val base = SystemClock.elapsedRealtime() + safeRemainingMs
+        views.setChronometer(viewId, base, null, true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            views.setChronometerCountDown(viewId, true)
+        }
+    }
+
+    private fun stopChronometer(views: RemoteViews, viewId: Int) {
+        views.setChronometer(viewId, SystemClock.elapsedRealtime(), null, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            views.setChronometerCountDown(viewId, false)
+        }
     }
 
     private fun riskColor(uvIndex: Int): Int = when {

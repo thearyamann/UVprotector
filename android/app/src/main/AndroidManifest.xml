@@ -31,12 +31,19 @@
             android:name="flutterEmbedding"
             android:value="2" />
             
-        <receiver android:name=".UVWidgetProvider" android:exported="false">
+        <receiver android:name=".UVWidgetProvider" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/uv_widget_info" />
+        </receiver>
+        <receiver android:name=".UVWidgetMediumProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/uv_widget_medium_info" />
         </receiver>
     </application>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>

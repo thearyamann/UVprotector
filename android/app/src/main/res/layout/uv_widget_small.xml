@@ -16,15 +16,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="14dp"
-    android:background="@drawable/widget_glass_bg_transparent">
+    android:padding="10dp"
+    android:background="@drawable/widget_glass_bg_small">
 
     <!-- Header Row: sun icon + "UV INDEX" label + risk pill -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:layout_marginTop="4dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -37,7 +38,7 @@
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:src="@drawable/ic_sun"
-                android:alpha="0.7"/>
+                android:alpha="0.48"/>
 
             <!-- "UV INDEX" 8sp bold tracking 1.2 rgba(255,255,255,0.30) — HTML line 184 -->
             <TextView
@@ -45,7 +46,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:text="UV INDEX"
-                android:textColor="#4DFFFFFF"
+                android:textColor="#36FFFFFF"
                 android:textSize="8sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.12"/>
@@ -76,12 +77,12 @@
         android:layout_weight="1"
         android:text="6"
         android:textColor="#f97316"
-        android:textSize="52sp"
+        android:textSize="66sp"
         android:textStyle="bold"
         android:gravity="bottom"
         android:includeFontPadding="false"
-        android:paddingTop="2dp"
-        android:paddingBottom="4dp"/>
+        android:paddingTop="4dp"
+        android:paddingBottom="6dp"/>
 
     <!-- Timer Card — HTML line 81: padding:7px 10px, border-radius:10px -->
     <LinearLayout
@@ -92,8 +93,8 @@
         android:gravity="center_vertical"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:background="@drawable/inner_card_small_bg">
 
         <!-- Shield/star icon — HTML: 12×12 shield star SVG -->
@@ -104,7 +105,7 @@
             android:alpha="0.55"/>
 
         <!-- Timer text — HTML line 83: 11px weight 600 monospace rgba(255,255,255,0.85) -->
-        <TextView
+        <Chronometer
             android:id="@+id/sw_timer_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -112,7 +113,7 @@
             android:layout_marginStart="6dp"
             android:text="01:22"
             android:textColor="#D9FFFFFF"
-            android:textSize="11sp"
+            android:textSize="11.5sp"
             android:textStyle="bold"
             android:fontFamily="monospace"/>
 
@@ -133,10 +134,10 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:visibility="gone"
-        android:paddingStart="9dp"
-        android:paddingEnd="9dp"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp"
+        android:paddingStart="11dp"
+        android:paddingEnd="11dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:background="@drawable/inner_card_green_small_bg">
 
         <!-- Line 1 — HTML line 96: 9px weight 600 #4ade80 -->
@@ -145,7 +146,7 @@
             android:layout_height="wrap_content"
             android:text="No cream needed"
             android:textColor="#4ade80"
-            android:textSize="9sp"
+            android:textSize="8.5sp"
             android:textStyle="bold"/>
 
         <!-- Line 2 — HTML line 97: 8px rgba(255,255,255,0.38) -->
@@ -154,8 +155,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:text="Check when heading outside"
-            android:textColor="#61FFFFFF"
-            android:textSize="8sp"/>
+            android:textColor="#8AFFFFFF"
+            android:textSize="7.5sp"/>
     </LinearLayout>
 
 </LinearLayout>

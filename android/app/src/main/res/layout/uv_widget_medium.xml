@@ -20,34 +20,39 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:paddingTop="14dp"
-    android:paddingBottom="14dp"
-    android:background="@drawable/widget_glass_bg_transparent">
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:background="@drawable/widget_glass_bg_medium">
 
     <!-- LEFT COLUMN — HTML mw-left: width:110px, flex-column, space-between -->
     <LinearLayout
-        android:layout_width="110dp"
+        android:layout_width="98dp"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingTop="2dp">
 
         <!-- "UV INDEX" label — HTML line 102: 9px bold tracking 1.5 rgba(255,255,255,0.32) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="UV INDEX"
-            android:textColor="#52FFFFFF"
+            android:textColor="#36FFFFFF"
             android:textSize="9sp"
             android:textStyle="bold"
             android:letterSpacing="0.15"/>
 
-        <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:text="" />
 
         <!-- Ring + UV number — HTML mw-ring-wrap: 72×72, r=28 -->
         <FrameLayout
-            android:layout_width="72dp"
-            android:layout_height="72dp">
+            android:layout_width="62dp"
+            android:layout_height="62dp">
 
             <ImageView
                 android:id="@+id/mw_ring"
@@ -66,7 +71,11 @@
                 android:gravity="center"/>
         </FrameLayout>
 
-        <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:text="" />
 
         <!-- Burn time row — HTML lines 110-114: flame + "Burn in " muted + value risk-colored -->
         <LinearLayout
@@ -95,13 +104,17 @@
     </LinearLayout>
 
     <!-- Gap: 14dp — HTML: gap:14px -->
-    <View android:layout_width="14dp" android:layout_height="0dp"/>
+    <TextView
+        android:layout_width="8dp"
+        android:layout_height="0dp"
+        android:text="" />
 
     <!-- RIGHT PANEL CONTAINER -->
-    <FrameLayout
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:orientation="vertical">
 
         <!-- ACTIVE PANEL — HTML mw-right: padding:10px 12px, bg rgba(255,255,255,0.06) -->
         <LinearLayout
@@ -109,10 +122,10 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
+            android:paddingStart="11dp"
+            android:paddingEnd="11dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
             android:background="@drawable/inner_card_bg">
 
             <!-- Protection status pill — HTML mw-protect-pill: 9px bold tracking 0.6 -->
@@ -122,28 +135,36 @@
                 android:layout_height="wrap_content"
                 android:text="PROTECTED"
                 android:textColor="#4ade80"
-                android:textSize="9sp"
+                android:textSize="8sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.06"
-                android:paddingStart="7dp"
-                android:paddingEnd="9dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="8dp"
                 android:paddingTop="3dp"
                 android:paddingBottom="3dp"
                 android:background="@drawable/pill_bg_green"/>
 
-            <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:text="" />
 
             <!-- Countdown timer — HTML mw-timer: 28px weight 500 monospace tracking -1px -->
-            <TextView
+            <Chronometer
                 android:id="@+id/mw_timer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="01:22:45"
                 android:textColor="#EBFFFFFF"
-                android:textSize="28sp"
+                android:textSize="24sp"
                 android:fontFamily="monospace"/>
 
-            <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:text="" />
 
             <!-- Sessions section — HTML mw-sessions-bar: gap:5px -->
             <LinearLayout
@@ -158,14 +179,14 @@
                     android:layout_height="wrap_content"
                     android:text="1 / 3 Sessions"
                     android:textColor="#59FFFFFF"
-                    android:textSize="9sp"
-                    android:layout_marginBottom="5dp"/>
+                    android:textSize="8sp"
+                    android:layout_marginBottom="4dp"/>
 
                 <!-- Bar — HTML sessions-track: height:3px -->
                 <ImageView
                     android:id="@+id/mw_sessions_bar"
                     android:layout_width="match_parent"
-                    android:layout_height="3dp"
+                    android:layout_height="2dp"
                     android:scaleType="fitXY"/>
             </LinearLayout>
         </LinearLayout>
@@ -176,10 +197,10 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:paddingStart="13dp"
-            android:paddingEnd="13dp"
-            android:paddingTop="11dp"
-            android:paddingBottom="11dp"
+            android:paddingStart="11dp"
+            android:paddingEnd="11dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
             android:background="@drawable/inner_card_green_bg"
             android:visibility="gone">
 
@@ -189,16 +210,20 @@
                 android:layout_height="wrap_content"
                 android:text="UV IS LOW"
                 android:textColor="#4ade80"
-                android:textSize="9sp"
+                android:textSize="8sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.06"
-                android:paddingStart="7dp"
-                android:paddingEnd="9dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="8dp"
                 android:paddingTop="3dp"
                 android:paddingBottom="3dp"
                 android:background="@drawable/pill_bg_green"/>
 
-            <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:text="" />
 
             <!-- Message block — HTML mw-no-cream-title/sub, gap:3px -->
             <LinearLayout
@@ -208,12 +233,12 @@
 
                 <!-- Line 1 — HTML mw-no-cream-title: 12px bold #4ade80 -->
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="No cream needed at the moment"
-                    android:textColor="#4ade80"
-                    android:textSize="12sp"
-                    android:textStyle="bold"/>
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="No cream needed at the moment"
+                        android:textColor="#4ade80"
+                        android:textSize="11sp"
+                        android:textStyle="bold"/>
 
                 <!-- Line 2 — HTML mw-no-cream-sub: 10px rgba(255,255,255,0.42) -->
                 <TextView
@@ -222,10 +247,14 @@
                     android:layout_marginTop="3dp"
                     android:text="Check again when you head outside"
                     android:textColor="#6BFFFFFF"
-                    android:textSize="10sp"/>
+                    android:textSize="9sp"/>
             </LinearLayout>
 
-            <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:text="" />
 
             <!-- Sessions muted — HTML: rgba(255,255,255,0.25) -->
             <TextView
@@ -234,8 +263,8 @@
                 android:layout_height="wrap_content"
                 android:text="0 / 3 Sessions"
                 android:textColor="#40FFFFFF"
-                android:textSize="9sp"/>
+                android:textSize="8sp"/>
         </LinearLayout>
-    </FrameLayout>
+    </LinearLayout>
 
 </LinearLayout>

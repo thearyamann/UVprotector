@@ -6,7 +6,8 @@ import '../core/logger.dart';
 class WidgetService {
   static const String _groupId = 'group.com.thearyamann.uvprotector';
   static const String _iosWidgetName = 'UVProtectorWidget';
-  static const String _androidWidgetName = 'UVWidgetProvider';
+  static const String _androidSmallWidgetName = 'UVWidgetProvider';
+  static const String _androidMediumWidgetName = 'UVWidgetMediumProvider';
 
   static Future<void> updateFromCache() async {
     try {
@@ -153,7 +154,10 @@ class WidgetService {
 
       await HomeWidget.updateWidget(
         iOSName: _iosWidgetName,
-        androidName: _androidWidgetName,
+        androidName: _androidSmallWidgetName,
+      );
+      await HomeWidget.updateWidget(
+        androidName: _androidMediumWidgetName,
       );
     } catch (e, st) {
       AppLogger.logServiceError('WidgetService', '_push', e, st);
