@@ -56,17 +56,19 @@ void callbackDispatcher() {
             0;
         final isOutdoor = session?['isOutdoor'] as bool? ?? true;
 
-        // 1. High UV Alert (Prompt first application)
-        if (completed == 0 && finalData.uvIndex >= 6) {
+        // 1. Moderate+ UV Alert (Prompt first application)
+        if (completed == 0 && finalData.uvIndex >= 3) {
           final todayKey = _todayKey();
           final lastHighUvAlertDate =
               await PreferencesService.loadLastHighUvAlertDate();
           if (lastHighUvAlertDate != todayKey) {
+            final isHighUv = finalData.uvIndex >= 6;
             await NotificationService.showNotification(
               id: 2,
-              title: 'High UV Alert! ☀️',
-              body:
-                  'UV index is now ${finalData.uvIndex.toStringAsFixed(1)}. Apply sunscreen for protection.',
+              title: isHighUv ? 'High UV Alert! ☀️' : 'UV Alert! ☀️',
+              body: isHighUv
+                  ? 'UV index is now ${finalData.uvIndex.toStringAsFixed(1)}. Apply sunscreen for protection.'
+                  : 'UV index is now ${finalData.uvIndex.toStringAsFixed(1)}. Sunscreen is recommended before going outside.',
             );
             await PreferencesService.saveLastHighUvAlertDate(todayKey);
           }

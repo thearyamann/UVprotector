@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/uv_controller.dart';
@@ -22,7 +25,9 @@ import '../widgets/pressable.dart';
 import '../services/location_service.dart';
 import '../services/preferences_service.dart';
 import '../services/widget_service.dart';
+import '../services/notification_service.dart';
 import '../services/notification_history_service.dart';
+import '../core/logger.dart';
 
 class HomeScreen extends StatefulWidget {
   final SkinType? initialSkinType;
@@ -128,8 +133,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final prefs = await PreferencesService.loadPreferences();
       if (mounted) setState(() => _userName = prefs.name);
 
-      final pos = await LocationService().getCurrentLocation();
-      await _fetchConsolidatedData(pos.latitude, pos.longitude);
+      final pos = await LocationService().getCurrentLocation().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw TimeoutException('Location step timed out'),
+      );
+      await _fetchConsolidatedData(pos.latitude, pos.longitude).timeout(
+        const Duration(seconds: 90),
+        onTimeout: () => throw TimeoutException('Weather/UV step timed out'),
+      );
+    } on TimeoutException {
+      if (mounted) {
+        setState(
+          () => _errorMessage =
+              'Loading took too long. Please check location and internet, then try again.',
+        );
+      }
+      final cached = await UVCacheService.loadCachedUVData();
+      if (cached != null && mounted) setState(() => _uvData = cached);
     } on LocationException catch (e) {
       if (mounted) setState(() => _errorMessage = e.message);
       if (e.type == LocationErrorType.permissionPermanentlyDenied) {
@@ -144,6 +164,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _sendIosTestNotification() async {
+    final uvIndex = _uvData?.uvIndex ?? 4.0;
+    final isHighUv = uvIndex >= 6;
+
+    await NotificationService.requestPermissions();
+    await NotificationService.showNotification(
+      id: 999,
+      title: isHighUv ? 'High UV Alert! ☀️' : 'UV Alert! ☀️',
+      body: isHighUv
+          ? 'Test: UV index is high. Apply sunscreen for protection.'
+          : 'Test: UV is moderate or above. Sunscreen is recommended before going outside.',
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('iOS test notification sent')),
+    );
+    _loadNotificationState();
   }
 
   Future<void> _fetchConsolidatedData(double lat, double lng) async {
@@ -163,7 +203,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
 
       await UVCacheService.saveUVData(uvData);
-      await WidgetService.updateFromCache(); // Instantly push live data to widgets
 
       if (mounted) {
         setState(() {
@@ -183,8 +222,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           );
         });
       }
-    } catch (_) {
-      // Data fetch errored - usually handled by showing previously cached data
+
+      unawaited(WidgetService.updateFromCache());
+    } catch (e, st) {
+      AppLogger.logServiceError('HomeScreen', '_fetchConsolidatedData', e, st);
+      final cached = await UVCacheService.loadCachedUVData();
+      if (mounted) {
+        setState(() {
+          _errorMessage =
+              'Could not load UV data right now. Please check your internet and try again.';
+          if (cached != null) {
+            _uvData = cached;
+          }
+        });
+      }
     }
   }
 
@@ -266,6 +317,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               children: [
                 _buildHeader(screenHeight, isDark),
                 _buildGreeting(screenHeight, isDark),
+                if (_errorMessage != null) ...[
+                  SizedBox(height: verticalGap * 0.7),
+                  _buildTopErrorBanner(isDark),
+                ],
+                if (Platform.isIOS) ...[
+                  SizedBox(height: verticalGap * 0.8),
+                  _buildIosTestButton(isDark),
+                ],
 
                 if (_isLoading && _uvData == null)
                   SkeletonHomeScreen(isDark: isDark)
@@ -317,15 +376,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   SizedBox(height: verticalGap),
 
                   AdviceCard(uvData: _uvData, isDark: isDark),
-
-                  if (_errorMessage != null)
-                    Padding(
-                      padding: EdgeInsets.only(top: verticalGap),
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
 
                   SizedBox(height: verticalGap * 1.6),
                   _buildFooterNote(screenWidth, screenHeight, isDark),
@@ -440,6 +490,85 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopErrorBanner(bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.14 : 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withValues(alpha: 0.22),
+          width: 0.6,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.error_outline_rounded,
+            size: 16,
+            color: const Color(0xFFEF4444),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _errorMessage ?? '',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: isDark ? Colors.white : const Color(0xFF7F1D1D),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIosTestButton(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Pressable(
+        onTap: _sendIosTestNotification,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFF0F172A).withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : const Color(0xFF0F172A).withValues(alpha: 0.10),
+              width: 0.6,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.notifications_active_outlined,
+                size: 14,
+                color: AppTheme.textSecondary(isDark),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Test iOS Notification',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary(isDark),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

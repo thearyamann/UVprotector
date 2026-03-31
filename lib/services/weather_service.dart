@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/weather_data.dart';
-import '../config/app_config.dart';
 import '../core/logger.dart';
 
 class WeatherService {
@@ -21,6 +20,22 @@ class WeatherService {
     return '$h:00 $ap';
   }
 
+  static String _formatLocalHour(DateTime time) => _formatHour12(time.toLocal().hour);
+
+  static String _conditionFromMetSymbol(String symbolCode) {
+    final normalized = symbolCode.toLowerCase();
+    if (normalized.contains('clearsky')) return 'Clear';
+    if (normalized.contains('fair')) return 'Partly cloudy';
+    if (normalized.contains('partlycloudy')) return 'Partly cloudy';
+    if (normalized.contains('cloudy')) return 'Cloudy';
+    if (normalized.contains('fog')) return 'Foggy';
+    if (normalized.contains('rain')) return 'Rainy';
+    if (normalized.contains('snow')) return 'Snowy';
+    if (normalized.contains('sleet')) return 'Showers';
+    if (normalized.contains('thunder')) return 'Stormy';
+    return 'Clear';
+  }
+
   static Future<
     ({WeatherData weather, String peakStart, String peakEnd, double currentUV})
   >
@@ -30,82 +45,363 @@ class WeatherService {
     required String cityName,
   }) async {
     try {
-      final url = Uri.parse(
-        'https://api.open-meteo.com/v1/forecast'
-        '?latitude=$latitude&longitude=$longitude'
-        '&current=temperature_2m,weathercode,uv_index'
-        '&daily=temperature_2m_max,temperature_2m_min'
-        '&hourly=uv_index'
-        '&timezone=auto&forecast_days=1',
-      );
-
-      final response = await http
-          .get(url)
-          .timeout(Duration(seconds: AppConfig.apiTimeoutSeconds));
-
-      if (response.statusCode != 200) {
-        throw WeatherException(
-          'Weather fetch failed with status: ${response.statusCode}',
-          statusCode: response.statusCode,
-        );
-      }
-
-      final data = jsonDecode(response.body);
-      final current = data['current'];
-      final daily = data['daily'];
-      final currentUV = (current['uv_index'] as num?)?.toDouble() ?? 0.0;
-
-      String peakStart = '12:00 PM';
-      String peakEnd = '3:00 PM';
-
-      final hourly = data['hourly'];
-      if (hourly != null && hourly['uv_index'] != null) {
-        final uvList = (hourly['uv_index'] as List)
-            .map((e) => (e as num).toDouble())
-            .toList();
-
-        if (uvList.isNotEmpty) {
-          double maxUV = 0;
-          for (final v in uvList) {
-            if (v > maxUV) maxUV = v;
-          }
-
-          final threshold = maxUV * 0.8;
-          int startHour = -1;
-          int endHour = -1;
-          for (int i = 0; i < uvList.length && i < 24; i++) {
-            if (uvList[i] >= threshold && uvList[i] > 0) {
-              if (startHour == -1) startHour = i;
-              endHour = i;
-            }
-          }
-
-          if (startHour >= 0 && endHour >= 0) {
-            peakStart = _formatHour12(startHour);
-            peakEnd = _formatHour12(endHour + 1);
-          }
-        }
-      }
-
-      final weather = WeatherData(
-        temperature: (current['temperature_2m'] as num).toDouble(),
-        high: (daily['temperature_2m_max'][0] as num).toDouble(),
-        low: (daily['temperature_2m_min'][0] as num).toDouble(),
-        condition: _conditionFromCode(current['weathercode'] as int),
+      print('[UV] WeatherService: trying MET Norway API...');
+      final result = await _fetchMetNoWeatherAndPeak(
+        latitude: latitude,
+        longitude: longitude,
         cityName: cityName,
       );
-
-      return (
-        weather: weather,
-        peakStart: peakStart,
-        peakEnd: peakEnd,
-        currentUV: currentUV,
-      );
+      print('[UV] WeatherService: MET Norway SUCCESS');
+      return result;
     } catch (e, st) {
-      if (e is WeatherException) rethrow;
-      AppLogger.logServiceError('WeatherService', 'fetchWeatherAndPeak', e, st);
-      throw WeatherException('Failed to fetch weather data', cause: e);
+      print('[UV] WeatherService: MET Norway FAILED – $e');
+      AppLogger.logServiceError(
+        'WeatherService',
+        'fetchWeatherAndPeak.metNo',
+        e,
+        st,
+      );
     }
+
+    try {
+      print('[UV] WeatherService: trying Open-Meteo detailed API...');
+      final result = await _fetchDetailedWeatherAndPeak(
+        latitude: latitude,
+        longitude: longitude,
+        cityName: cityName,
+      );
+      print('[UV] WeatherService: Open-Meteo detailed SUCCESS');
+      return result;
+    } catch (e, st) {
+      print('[UV] WeatherService: Open-Meteo detailed FAILED – $e');
+      AppLogger.logServiceError(
+        'WeatherService',
+        'fetchWeatherAndPeak.detailed',
+        e,
+        st,
+      );
+
+      try {
+        print('[UV] WeatherService: trying Open-Meteo current-only API...');
+        final result = await _fetchCurrentOnlyWeather(
+          latitude: latitude,
+          longitude: longitude,
+          cityName: cityName,
+        );
+        print('[UV] WeatherService: Open-Meteo current-only SUCCESS');
+        return result;
+      } catch (fallbackError, fallbackSt) {
+        print('[UV] WeatherService: Open-Meteo current-only FAILED – $fallbackError');
+        AppLogger.logServiceError(
+          'WeatherService',
+          'fetchWeatherAndPeak.fallback',
+          fallbackError,
+          fallbackSt,
+        );
+        throw WeatherException(
+          'Failed to fetch weather data',
+          cause: fallbackError,
+        );
+      }
+    }
+  }
+
+  static Future<
+    ({WeatherData weather, String peakStart, String peakEnd, double currentUV})
+  >
+  _fetchMetNoWeatherAndPeak({
+    required double latitude,
+    required double longitude,
+    required String cityName,
+  }) async {
+    final url = Uri.parse(
+      'https://api.met.no/weatherapi/locationforecast/2.0/complete'
+      '?lat=$latitude&lon=$longitude',
+    );
+
+    final response = await _getWithRetry(
+      url,
+      timeoutSeconds: 15,
+      maxAttempts: 2,
+    );
+
+    if (response.statusCode != 200) {
+      throw WeatherException(
+        'MET Norway fetch failed with status: ${response.statusCode}',
+        statusCode: response.statusCode,
+        cause: response.body,
+      );
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final properties = data['properties'] as Map<String, dynamic>?;
+    final timeseries = properties?['timeseries'] as List<dynamic>?;
+    if (timeseries == null || timeseries.isEmpty) {
+      throw const WeatherException('MET Norway response missing timeseries');
+    }
+
+    final firstEntry = timeseries.first as Map<String, dynamic>;
+    final firstData = firstEntry['data'] as Map<String, dynamic>;
+    final firstInstant = firstData['instant'] as Map<String, dynamic>;
+    final firstDetails = firstInstant['details'] as Map<String, dynamic>;
+
+    final now = DateTime.now();
+    final relevantEntries = <Map<String, dynamic>>[];
+    for (final raw in timeseries.take(24)) {
+      final entry = raw as Map<String, dynamic>;
+      final time = DateTime.parse(entry['time'] as String).toLocal();
+      if (time.isAfter(now.subtract(const Duration(hours: 1)))) {
+        relevantEntries.add(entry);
+      }
+    }
+    if (relevantEntries.isEmpty) {
+      relevantEntries.add(firstEntry);
+    }
+
+    double currentUV =
+        (firstDetails['ultraviolet_index_clear_sky'] as num?)?.toDouble() ?? 0.0;
+    double high = (firstDetails['air_temperature'] as num?)?.toDouble() ?? 0.0;
+    double low = high;
+    double maxUV = currentUV;
+    DateTime? peakStartTime;
+    DateTime? peakEndTime;
+
+    for (final entry in relevantEntries) {
+      final time = DateTime.parse(entry['time'] as String);
+      final details =
+          ((entry['data'] as Map<String, dynamic>)['instant']
+                  as Map<String, dynamic>)['details']
+              as Map<String, dynamic>;
+      final temperature = (details['air_temperature'] as num?)?.toDouble() ?? high;
+      final uv =
+          (details['ultraviolet_index_clear_sky'] as num?)?.toDouble() ?? 0.0;
+
+      if (temperature > high) high = temperature;
+      if (temperature < low) low = temperature;
+      if (uv > maxUV) maxUV = uv;
+
+      if (uv > 0) {
+        peakStartTime ??= time;
+        peakEndTime = time;
+      }
+    }
+
+    if (maxUV > 0) {
+      final threshold = maxUV * 0.8;
+      peakStartTime = null;
+      peakEndTime = null;
+      for (final entry in relevantEntries) {
+        final time = DateTime.parse(entry['time'] as String);
+        final details =
+            ((entry['data'] as Map<String, dynamic>)['instant']
+                    as Map<String, dynamic>)['details']
+                as Map<String, dynamic>;
+        final uv =
+            (details['ultraviolet_index_clear_sky'] as num?)?.toDouble() ?? 0.0;
+        if (uv >= threshold && uv > 0) {
+          peakStartTime ??= time;
+          peakEndTime = time;
+        }
+      }
+    }
+
+    final summary =
+        (firstData['next_1_hours'] as Map<String, dynamic>?)?['summary']
+            as Map<String, dynamic>?;
+    final symbolCode = summary?['symbol_code'] as String? ??
+        (((firstData['next_6_hours'] as Map<String, dynamic>?)?['summary']
+                as Map<String, dynamic>?)?['symbol_code'] as String?) ??
+        'clearsky_day';
+
+    final weather = WeatherData(
+      temperature: (firstDetails['air_temperature'] as num?)?.toDouble() ?? 0.0,
+      high: high,
+      low: low,
+      condition: _conditionFromMetSymbol(symbolCode),
+      cityName: cityName,
+    );
+
+    return (
+      weather: weather,
+      peakStart: peakStartTime != null
+          ? _formatLocalHour(peakStartTime)
+          : '12:00 PM',
+      peakEnd: peakEndTime != null
+          ? _formatLocalHour(peakEndTime.add(const Duration(hours: 1)))
+          : '3:00 PM',
+      currentUV: currentUV,
+    );
+  }
+
+  static Future<
+    ({WeatherData weather, String peakStart, String peakEnd, double currentUV})
+  >
+  _fetchDetailedWeatherAndPeak({
+    required double latitude,
+    required double longitude,
+    required String cityName,
+  }) async {
+    final url = Uri.parse(
+      'https://api.open-meteo.com/v1/forecast'
+      '?latitude=$latitude&longitude=$longitude'
+      '&current=temperature_2m,weather_code,uv_index'
+      '&daily=temperature_2m_max,temperature_2m_min'
+      '&hourly=uv_index'
+      '&timezone=auto&forecast_days=1',
+    );
+
+    final response = await _getWithRetry(
+      url,
+      timeoutSeconds: 15,
+      maxAttempts: 2,
+    );
+
+    if (response.statusCode != 200) {
+      throw WeatherException(
+        'Weather fetch failed with status: ${response.statusCode}',
+        statusCode: response.statusCode,
+        cause: response.body,
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    final current = data['current'];
+    final daily = data['daily'];
+    final currentUV = (current['uv_index'] as num?)?.toDouble() ?? 0.0;
+
+    String peakStart = '12:00 PM';
+    String peakEnd = '3:00 PM';
+
+    final hourly = data['hourly'];
+    if (hourly != null && hourly['uv_index'] != null) {
+      final uvList = (hourly['uv_index'] as List)
+          .map((e) => (e as num).toDouble())
+          .toList();
+
+      if (uvList.isNotEmpty) {
+        double maxUV = 0;
+        for (final v in uvList) {
+          if (v > maxUV) maxUV = v;
+        }
+
+        final threshold = maxUV * 0.8;
+        int startHour = -1;
+        int endHour = -1;
+        for (int i = 0; i < uvList.length && i < 24; i++) {
+          if (uvList[i] >= threshold && uvList[i] > 0) {
+            if (startHour == -1) startHour = i;
+            endHour = i;
+          }
+        }
+
+        if (startHour >= 0 && endHour >= 0) {
+          peakStart = _formatHour12(startHour);
+          peakEnd = _formatHour12(endHour + 1);
+        }
+      }
+    }
+
+    final weather = WeatherData(
+      temperature: (current['temperature_2m'] as num).toDouble(),
+      high: (daily['temperature_2m_max'][0] as num).toDouble(),
+      low: (daily['temperature_2m_min'][0] as num).toDouble(),
+      condition: _conditionFromCode(
+        (current['weather_code'] as num?)?.toInt() ??
+            (current['weathercode'] as num?)?.toInt() ??
+            0,
+      ),
+      cityName: cityName,
+    );
+
+    return (
+      weather: weather,
+      peakStart: peakStart,
+      peakEnd: peakEnd,
+      currentUV: currentUV,
+    );
+  }
+
+  static Future<
+    ({WeatherData weather, String peakStart, String peakEnd, double currentUV})
+  >
+  _fetchCurrentOnlyWeather({
+    required double latitude,
+    required double longitude,
+    required String cityName,
+  }) async {
+    final url = Uri.parse(
+      'https://api.open-meteo.com/v1/forecast'
+      '?latitude=$latitude&longitude=$longitude'
+      '&current=temperature_2m,weather_code,uv_index'
+      '&forecast_days=1',
+    );
+
+    final response = await _getWithRetry(
+      url,
+      timeoutSeconds: 15,
+      maxAttempts: 2,
+    );
+
+    if (response.statusCode != 200) {
+      throw WeatherException(
+        'Fallback weather fetch failed with status: ${response.statusCode}',
+        statusCode: response.statusCode,
+        cause: response.body,
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    final current = data['current'];
+    final temperature = (current['temperature_2m'] as num?)?.toDouble() ?? 0.0;
+    final currentUV = (current['uv_index'] as num?)?.toDouble() ?? 0.0;
+    final weatherCode =
+        (current['weather_code'] as num?)?.toInt() ??
+        (current['weathercode'] as num?)?.toInt() ??
+        0;
+
+    final weather = WeatherData(
+      temperature: temperature,
+      high: temperature,
+      low: temperature,
+      condition: _conditionFromCode(weatherCode),
+      cityName: cityName,
+    );
+
+    return (
+      weather: weather,
+      peakStart: '12:00 PM',
+      peakEnd: '3:00 PM',
+      currentUV: currentUV,
+    );
+  }
+
+  static Future<http.Response> _getWithRetry(
+    Uri url, {
+    required int timeoutSeconds,
+    int maxAttempts = 2,
+  }) async {
+    Object? lastError;
+
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        return await http
+            .get(
+              url,
+              headers: const {
+                'User-Agent': 'UVProtectorApp/1.0',
+                'Accept': 'application/json',
+              },
+            )
+            .timeout(Duration(seconds: timeoutSeconds));
+      } catch (e) {
+        lastError = e;
+        if (attempt < maxAttempts - 1) {
+          await Future<void>.delayed(const Duration(milliseconds: 700));
+        }
+      }
+    }
+
+    throw lastError ?? const WeatherException('Weather request failed');
   }
 
   static Future<WeatherData> fetchWeather({
@@ -130,5 +426,9 @@ class WeatherException implements Exception {
   const WeatherException(this.message, {this.statusCode, this.cause});
 
   @override
-  String toString() => 'WeatherException: $message';
+  String toString() {
+    final codePart = statusCode != null ? ' [$statusCode]' : '';
+    final causePart = cause != null ? ' | Cause: $cause' : '';
+    return 'WeatherException$codePart: $message$causePart';
+  }
 }

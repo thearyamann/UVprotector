@@ -92,7 +92,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             alignment: Alignment.topCenter,
                             children: [
                               ...previousChildren,
-                              if (currentChild != null) currentChild,
+                              ...?currentChild == null ? null : [currentChild],
                             ],
                           ),
                           child: _getStepContent(),

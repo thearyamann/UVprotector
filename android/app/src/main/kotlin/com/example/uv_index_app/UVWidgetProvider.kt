@@ -86,14 +86,45 @@ open class UVWidgetProvider : HomeWidgetProvider() {
         views.setTextColor(R.id.sw_pill_text, rc)
         views.setTextViewText(R.id.sw_pill_text, uvStatus.uppercase())
 
+        val isNotStarted = !timerRunning && protectionStatus == "Not Applied"
+
         if (isLow) {
             views.setInt(R.id.sw_pill_text, "setBackgroundResource", R.drawable.pill_bg_green)
             views.setViewVisibility(R.id.sw_timer_card, View.GONE)
+            views.setViewVisibility(R.id.sw_prompt_card, View.GONE)
             views.setViewVisibility(R.id.sw_message_card, View.VISIBLE)
             stopChronometer(views, R.id.sw_timer_text)
-        } else {
-            views.setInt(R.id.sw_pill_text, "setBackgroundResource", R.drawable.pill_bg_high)
+        } else if (isNotStarted) {
+            views.setInt(
+                R.id.sw_pill_text,
+                "setBackgroundResource",
+                smallRiskPillBackground(uvIndex)
+            )
             views.setViewVisibility(R.id.sw_message_card, View.GONE)
+            views.setViewVisibility(R.id.sw_timer_card, View.GONE)
+            views.setViewVisibility(R.id.sw_prompt_card, View.VISIBLE)
+            views.setTextColor(R.id.sw_prompt_title, rc)
+            views.setTextViewText(
+                R.id.sw_prompt_title,
+                if (uvIndex >= 6) "Apply sunscreen now" else "Apply sunscreen"
+            )
+            views.setTextViewText(
+                R.id.sw_prompt_subtitle,
+                if (uvIndex >= 6) {
+                    "High UV outside right now"
+                } else {
+                    "Protect skin before going out"
+                }
+            )
+            stopChronometer(views, R.id.sw_timer_text)
+        } else {
+            views.setInt(
+                R.id.sw_pill_text,
+                "setBackgroundResource",
+                smallRiskPillBackground(uvIndex)
+            )
+            views.setViewVisibility(R.id.sw_message_card, View.GONE)
+            views.setViewVisibility(R.id.sw_prompt_card, View.GONE)
             views.setViewVisibility(R.id.sw_timer_card, View.VISIBLE)
 
             val nowMs = System.currentTimeMillis()
@@ -134,9 +165,9 @@ open class UVWidgetProvider : HomeWidgetProvider() {
 
         views.setTextViewText(R.id.mw_uv_number, uvIndex.toString())
         views.setTextColor(R.id.mw_uv_number, rc)
-        views.setTextViewText(R.id.mw_burn_time, "Burn in $burnTime")
-        views.setTextColor(R.id.mw_burn_time, rc)
-        views.setImageViewBitmap(R.id.mw_ring, drawRing(uvIndex, rc, 144))
+        views.setTextViewText(R.id.mw_burn_value, burnTime)
+        views.setTextColor(R.id.mw_burn_value, rc)
+        views.setImageViewBitmap(R.id.mw_ring, drawRing(uvIndex, rc, 160))
 
         if (isLow) {
             views.setViewVisibility(R.id.mw_active_panel, View.GONE)
@@ -152,19 +183,48 @@ open class UVWidgetProvider : HomeWidgetProvider() {
 
             val (pillText, pillColor) = when (protectionStatus) {
                 "Protected" -> "Protected" to Color.parseColor("#4ade80")
-                "Expiring Soon" -> "Expiring Soon" to Color.parseColor("#f87171")
+                "Expiring Soon" -> "Expiring Soon" to Color.parseColor("#f9741b")
                 "Done for today" -> "Done for today" to Color.parseColor("#4ade80")
-                else -> "Unprotected" to Color.parseColor("#f87171")
+                else -> "Unprotected" to Color.parseColor("#f9741b")
             }
             views.setTextViewText(R.id.mw_protect_text, pillText.uppercase())
             views.setTextColor(R.id.mw_protect_text, pillColor)
+            views.setInt(
+                R.id.mw_protect_text,
+                "setBackgroundResource",
+                protectionPillBackground(protectionStatus)
+            )
 
             val nowMs = System.currentTimeMillis()
             val remainMs = timerEndMs - nowMs
-            if (timerRunning && timerEndMs > nowMs) {
+            val isNotStarted = !timerRunning &&
+                protectionStatus == "Not Applied" &&
+                sessionsCompleted == 0
+
+            if (isNotStarted) {
+                views.setViewVisibility(R.id.mw_timer_block, View.GONE)
+                views.setViewVisibility(R.id.mw_prompt_block, View.VISIBLE)
+                views.setTextViewText(
+                    R.id.mw_prompt_title,
+                    if (uvIndex >= 6) "High UV - Apply Sunscreen!" else "Ready for the sun?"
+                )
+                views.setTextViewText(
+                    R.id.mw_prompt_subtitle,
+                    if (uvIndex >= 6) {
+                        "UV is high right now. Apply before going out."
+                    } else {
+                        "Apply sunscreen for protection"
+                    }
+                )
+                stopChronometer(views, R.id.mw_timer)
+            } else if (timerRunning && timerEndMs > nowMs) {
+                views.setViewVisibility(R.id.mw_timer_block, View.VISIBLE)
+                views.setViewVisibility(R.id.mw_prompt_block, View.GONE)
                 bindCountdownChronometer(views, R.id.mw_timer, remainMs)
                 views.setTextColor(R.id.mw_timer, Color.argb(235, 255, 255, 255))
             } else {
+                views.setViewVisibility(R.id.mw_timer_block, View.VISIBLE)
+                views.setViewVisibility(R.id.mw_prompt_block, View.GONE)
                 stopChronometer(views, R.id.mw_timer)
                 views.setTextViewText(R.id.mw_timer, "--:--:--")
                 views.setTextColor(R.id.mw_timer, Color.argb(76, 255, 255, 255))
@@ -214,8 +274,18 @@ open class UVWidgetProvider : HomeWidgetProvider() {
     private fun riskColor(uvIndex: Int): Int = when {
         uvIndex <= 2 -> Color.parseColor("#4ade80")
         uvIndex <= 5 -> Color.parseColor("#fbbf24")
-        uvIndex <= 7 -> Color.parseColor("#f97316")
         else -> Color.parseColor("#f9741b")
+    }
+
+    private fun smallRiskPillBackground(uvIndex: Int): Int = when {
+        uvIndex <= 2 -> R.drawable.pill_bg_green
+        uvIndex <= 5 -> R.drawable.pill_bg_amber
+        else -> R.drawable.pill_bg_red
+    }
+
+    private fun protectionPillBackground(protectionStatus: String): Int = when (protectionStatus) {
+        "Protected", "Done for today", "UV is low" -> R.drawable.pill_bg_green
+        else -> R.drawable.pill_bg_red
     }
 
     private fun drawRing(uvIndex: Int, ringColor: Int, sizePx: Int): Bitmap {
@@ -237,8 +307,7 @@ open class UVWidgetProvider : HomeWidgetProvider() {
         val progress = min(uvIndex / 11f, 1f)
         val sweepAngle = progress * 360f
 
-        val startColor = riskColor(maxOf(0, uvIndex - 2))
-        val gradient = SweepGradient(cx, cy, intArrayOf(startColor, ringColor), null)
+        val gradient = SweepGradient(cx, cy, intArrayOf(ringColor, ringColor), null)
 
         val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
