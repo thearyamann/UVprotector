@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import '../models/weather_data.dart';
 import '../core/logger.dart';
@@ -20,7 +21,8 @@ class WeatherService {
     return '$h:00 $ap';
   }
 
-  static String _formatLocalHour(DateTime time) => _formatHour12(time.toLocal().hour);
+  static String _formatLocalHour(DateTime time) =>
+      _formatHour12(time.toLocal().hour);
 
   static String _conditionFromMetSymbol(String symbolCode) {
     final normalized = symbolCode.toLowerCase();
@@ -44,6 +46,29 @@ class WeatherService {
     required double longitude,
     required String cityName,
   }) async {
+    try {
+      print(
+        '[UV] WeatherService: trying Satellite Radiation API (most accurate)...',
+      );
+      final result = await _fetchSatelliteRadiationUV(
+        latitude: latitude,
+        longitude: longitude,
+        cityName: cityName,
+      );
+      print(
+        '[UV] WeatherService: Satellite Radiation SUCCESS - UV is satellite-accurate',
+      );
+      return result;
+    } catch (e, st) {
+      print('[UV] WeatherService: Satellite Radiation FAILED – $e');
+      AppLogger.logServiceError(
+        'WeatherService',
+        'fetchWeatherAndPeak.satellite',
+        e,
+        st,
+      );
+    }
+
     try {
       print('[UV] WeatherService: trying MET Norway API...');
       final result = await _fetchMetNoWeatherAndPeak(
@@ -91,7 +116,9 @@ class WeatherService {
         print('[UV] WeatherService: Open-Meteo current-only SUCCESS');
         return result;
       } catch (fallbackError, fallbackSt) {
-        print('[UV] WeatherService: Open-Meteo current-only FAILED – $fallbackError');
+        print(
+          '[UV] WeatherService: Open-Meteo current-only FAILED – $fallbackError',
+        );
         AppLogger.logServiceError(
           'WeatherService',
           'fetchWeatherAndPeak.fallback',
@@ -104,6 +131,229 @@ class WeatherService {
         );
       }
     }
+  }
+
+  static Future<
+    ({WeatherData weather, String peakStart, String peakEnd, double currentUV})
+  >
+  _fetchSatelliteRadiationUV({
+    required double latitude,
+    required double longitude,
+    required String cityName,
+  }) async {
+    final now = DateTime.now();
+    final startDate =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${(now.day - 1).toString().padLeft(2, '0')}';
+    final endDate =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    final url = Uri.parse(
+      'https://satellite-api.open-meteo.com/v1/archive'
+      '?latitude=$latitude&longitude=$longitude'
+      '&start_date=$startDate&end_date=$endDate'
+      '&hourly=shortwave_radiation,direct_radiation,diffuse_radiation'
+      '&models=satellite_radiation_seamless'
+      '&timezone=auto',
+    );
+
+    final response = await _getWithRetry(
+      url,
+      timeoutSeconds: 20,
+      maxAttempts: 2,
+    );
+
+    if (response.statusCode != 200) {
+      throw WeatherException(
+        'Satellite Radiation API failed with status: ${response.statusCode}',
+        statusCode: response.statusCode,
+        cause: response.body,
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    final hourly = data['hourly'] as Map<String, dynamic>?;
+
+    if (hourly == null) {
+      throw const WeatherException(
+        'Satellite Radiation response missing hourly data',
+      );
+    }
+
+    final times = (hourly['time'] as List).cast<String>();
+    final shortwaveList = (hourly['shortwave_radiation'] as List);
+    final directList = (hourly['direct_radiation'] as List);
+    final diffuseList = (hourly['diffuse_radiation'] as List);
+
+    double currentUV = 0.0;
+    double maxUV = 0.0;
+    int? peakStartHour;
+    int? peakEndHour;
+
+    for (int i = 0; i < times.length; i++) {
+      final time = DateTime.parse(times[i]);
+      if (time.day != now.day) continue;
+
+      final shortwave = (shortwaveList[i] as num?)?.toDouble() ?? 0.0;
+      final direct = (directList[i] as num?)?.toDouble() ?? 0.0;
+      final diffuse = (diffuseList[i] as num?)?.toDouble() ?? 0.0;
+
+      final uv = _calculateUVIndex(shortwave, direct, diffuse, latitude, time);
+
+      if (time.hour == now.hour ||
+          (time.hour == now.hour - 1 && currentUV == 0)) {
+        currentUV = uv;
+      }
+
+      if (uv > maxUV) maxUV = uv;
+
+      if (uv > maxUV * 0.8 && uv > 0.5) {
+        peakStartHour ??= time.hour;
+        peakEndHour = time.hour;
+      }
+    }
+
+    if (currentUV == 0 && maxUV > 0) {
+      currentUV = maxUV * 0.7;
+    }
+
+    final weatherResult = await _fetchWeatherOnly(
+      latitude: latitude,
+      longitude: longitude,
+      cityName: cityName,
+    );
+
+    return (
+      weather: weatherResult,
+      peakStart: peakStartHour != null
+          ? _formatHour12(peakStartHour)
+          : '12:00 PM',
+      peakEnd: peakEndHour != null ? _formatHour12(peakEndHour + 1) : '3:00 PM',
+      currentUV: currentUV,
+    );
+  }
+
+  static double _calculateUVIndex(
+    double shortwaveRadiation,
+    double directRadiation,
+    double diffuseRadiation,
+    double latitude,
+    DateTime time,
+  ) {
+    if (shortwaveRadiation <= 0) return 0.0;
+
+    final zenithAngle = _calculateSolarZenithAngle(latitude, time);
+    if (zenithAngle > 85) return 0.0;
+
+    final cosZenith = math.cos(zenithAngle);
+    if (cosZenith <= 0) return 0.0;
+
+    final extraterrestrialUV = shortwaveRadiation * 0.014;
+
+    final cloudAttenuation = _estimateCloudAttenuation(
+      shortwaveRadiation,
+      directRadiation,
+      diffuseRadiation,
+    );
+
+    final uvIndex = extraterrestrialUV * cosZenith * cloudAttenuation;
+
+    return uvIndex.clamp(0.0, 15.0);
+  }
+
+  static double _calculateSolarZenithAngle(double latitude, DateTime time) {
+    final dayOfYear = time.difference(DateTime(time.year, 1, 1)).inDays + 1;
+    final declination =
+        23.45 * math.sin((360.0 / 365.0) * (dayOfYear - 81) * math.pi / 180.0);
+    final hourAngle = (time.hour + time.minute / 60.0 - 12.0) * 15.0;
+
+    final latRad = latitude * math.pi / 180.0;
+    final decRad = declination * math.pi / 180.0;
+    final hourRad = hourAngle * math.pi / 180.0;
+
+    final cosZenith =
+        math.sin(latRad) * math.sin(decRad) +
+        math.cos(latRad) * math.cos(decRad) * math.cos(hourRad);
+
+    return math.acos(cosZenith.clamp(-1.0, 1.0));
+  }
+
+  static double _estimateCloudAttenuation(
+    double shortwave,
+    double direct,
+    double diffuse,
+  ) {
+    if (shortwave <= 0) return 1.0;
+
+    final clearnessIndex = shortwave / 1000.0;
+
+    double attenuation;
+    if (clearnessIndex > 0.7) {
+      attenuation = 1.0;
+    } else if (clearnessIndex > 0.5) {
+      attenuation = 0.85;
+    } else if (clearnessIndex > 0.3) {
+      attenuation = 0.65;
+    } else {
+      attenuation = 0.4;
+    }
+
+    if (diffuse > 0 && shortwave > 0) {
+      final diffuseFraction = diffuse / shortwave;
+      if (diffuseFraction > 0.8) {
+        attenuation *= 0.5;
+      } else if (diffuseFraction > 0.6) {
+        attenuation *= 0.7;
+      } else if (diffuseFraction > 0.4) {
+        attenuation *= 0.85;
+      }
+    }
+
+    return attenuation.clamp(0.2, 1.0);
+  }
+
+  static Future<WeatherData> _fetchWeatherOnly({
+    required double latitude,
+    required double longitude,
+    required String cityName,
+  }) async {
+    try {
+      final url = Uri.parse(
+        'https://api.open-meteo.com/v1/forecast'
+        '?latitude=$latitude&longitude=$longitude'
+        '&current=temperature_2m,weather_code'
+        '&daily=temperature_2m_max,temperature_2m_min'
+        '&timezone=auto&forecast_days=1',
+      );
+
+      final response = await _getWithRetry(
+        url,
+        timeoutSeconds: 15,
+        maxAttempts: 2,
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final current = data['current'];
+        final daily = data['daily'];
+
+        return WeatherData(
+          temperature: (current['temperature_2m'] as num?)?.toDouble() ?? 0.0,
+          high: (daily['temperature_2m_max'][0] as num).toDouble(),
+          low: (daily['temperature_2m_min'][0] as num).toDouble(),
+          condition: _conditionFromCode(
+            (current['weather_code'] as num?)?.toInt() ?? 0,
+          ),
+          cityName: cityName,
+        );
+      }
+    } catch (_) {}
+
+    return WeatherData(
+      temperature: 0.0,
+      high: 0.0,
+      low: 0.0,
+      condition: 'Clear',
+      cityName: cityName,
+    );
   }
 
   static Future<
@@ -159,7 +409,8 @@ class WeatherService {
     }
 
     double currentUV =
-        (firstDetails['ultraviolet_index_clear_sky'] as num?)?.toDouble() ?? 0.0;
+        (firstDetails['ultraviolet_index_clear_sky'] as num?)?.toDouble() ??
+        0.0;
     double high = (firstDetails['air_temperature'] as num?)?.toDouble() ?? 0.0;
     double low = high;
     double maxUV = currentUV;
@@ -172,7 +423,8 @@ class WeatherService {
           ((entry['data'] as Map<String, dynamic>)['instant']
                   as Map<String, dynamic>)['details']
               as Map<String, dynamic>;
-      final temperature = (details['air_temperature'] as num?)?.toDouble() ?? high;
+      final temperature =
+          (details['air_temperature'] as num?)?.toDouble() ?? high;
       final uv =
           (details['ultraviolet_index_clear_sky'] as num?)?.toDouble() ?? 0.0;
 
@@ -208,9 +460,11 @@ class WeatherService {
     final summary =
         (firstData['next_1_hours'] as Map<String, dynamic>?)?['summary']
             as Map<String, dynamic>?;
-    final symbolCode = summary?['symbol_code'] as String? ??
+    final symbolCode =
+        summary?['symbol_code'] as String? ??
         (((firstData['next_6_hours'] as Map<String, dynamic>?)?['summary']
-                as Map<String, dynamic>?)?['symbol_code'] as String?) ??
+                as Map<String, dynamic>?)?['symbol_code']
+            as String?) ??
         'clearsky_day';
 
     final weather = WeatherData(

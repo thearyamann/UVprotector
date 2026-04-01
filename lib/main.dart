@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/background_service.dart';
 import 'services/notification_service.dart';
-import 'services/preferences_service.dart'; // Added this import
+import 'services/preferences_service.dart';
+import 'services/widget_service.dart';
 import 'models/user_preferences.dart';
 import 'models/skin_type.dart';
 import 'screens/onboarding_screen.dart';
@@ -25,6 +26,7 @@ void main() async {
     await NotificationService.requestPermissions();
     await BackgroundService.init();
     await BackgroundService.registerPeriodicRefresh();
+    await WidgetService.initializeWidget();
   } catch (_) {}
 
   final onboardingDone = await PreferencesService.isOnboardingDone();

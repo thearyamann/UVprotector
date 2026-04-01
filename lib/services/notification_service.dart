@@ -25,6 +25,28 @@ class NotificationService {
         // Handle notification tap if needed
       },
     );
+
+    await _createNotificationChannels();
+  }
+
+  static Future<void> _createNotificationChannels() async {
+    if (Platform.isAndroid) {
+      final androidPlugin = _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'uv_alerts',
+          'UV Alerts',
+          description: 'Notifications for UV index and sunscreen reminders',
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
+        ),
+      );
+    }
   }
 
   static Future<void> requestPermissions() async {
@@ -48,12 +70,15 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'uv_alerts',
       'UV Alerts',
       channelDescription: 'Notifications for UV index and sunscreen reminders',
       importance: Importance.high,
       priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      styleInformation: BigTextStyleInformation(body),
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -62,7 +87,7 @@ class NotificationService {
       presentSound: true,
     );
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );

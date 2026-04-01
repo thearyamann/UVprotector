@@ -9,6 +9,31 @@ class WidgetService {
   static const String _androidSmallWidgetName = 'UVWidgetProvider';
   static const String _androidMediumWidgetName = 'UVWidgetMediumProvider';
 
+  static Future<void> initializeWidget() async {
+    try {
+      if (Platform.isIOS) {
+        await HomeWidget.setAppGroupId(_groupId);
+      }
+
+      await HomeWidget.saveWidgetData<int>('uv_index', 0);
+      await HomeWidget.saveWidgetData<String>('uv_status', 'Loading...');
+      await HomeWidget.saveWidgetData<String>('burn_time', '--');
+      await HomeWidget.saveWidgetData<bool>('timer_running', false);
+      await HomeWidget.saveWidgetData<int>('timer_progress_percent', 0);
+      await HomeWidget.saveWidgetData<String>('sessions_text', '0/0');
+      await HomeWidget.saveWidgetData<String>('protection_status', 'Open app');
+      await HomeWidget.saveWidgetData<int>('timer_end_time', 0);
+
+      await HomeWidget.updateWidget(
+        iOSName: _iosWidgetName,
+        androidName: _androidSmallWidgetName,
+      );
+      await HomeWidget.updateWidget(androidName: _androidMediumWidgetName);
+    } catch (e, st) {
+      AppLogger.logServiceError('WidgetService', 'initializeWidget', e, st);
+    }
+  }
+
   static Future<void> updateFromCache() async {
     try {
       final uvData = await UVCacheService.loadCachedUVData();
@@ -156,9 +181,7 @@ class WidgetService {
         iOSName: _iosWidgetName,
         androidName: _androidSmallWidgetName,
       );
-      await HomeWidget.updateWidget(
-        androidName: _androidMediumWidgetName,
-      );
+      await HomeWidget.updateWidget(androidName: _androidMediumWidgetName);
     } catch (e, st) {
       AppLogger.logServiceError('WidgetService', '_push', e, st);
     }

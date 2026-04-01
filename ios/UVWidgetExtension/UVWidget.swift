@@ -336,20 +336,20 @@ struct UVWidgetProvider: TimelineProvider {
 
     private func loadEntry() -> UVWidgetEntry {
         let ud = UserDefaults(suiteName: "group.com.thearyamann.uvprotector")
+        
+        let uvIndex = ud?.integer(forKey: "uv_index") ?? 0
+        let hasData = uvIndex > 0 || (ud?.string(forKey: "uv_status") ?? "").isEmpty == false
 
         return UVWidgetEntry(
             date: Date(),
-            uvIndex: ud?.integer(forKey: "uv_index") ?? 0,
-            uvStatus: ud?.string(forKey: "uv_status") ?? "Low",
-            burnTime: ud?.string(forKey: "burn_time") ?? "0 mins",
-            timerRunning: ud?.bool(forKey: "timer_running") ?? false,
-            timerEndTime: {
-                let ms = ud?.integer(forKey: "timer_end_time") ?? 0
-                return ms > 0 ? Date(timeIntervalSince1970: Double(ms) / 1000.0) : nil
-            }(),
-            timerProgressPercent: ud?.integer(forKey: "timer_progress_percent") ?? 0,
-            sessionsText: ud?.string(forKey: "sessions_text") ?? "0/0",
-            protectionStatus: ud?.string(forKey: "protection_status") ?? "Not Applied"
+            uvIndex: uvIndex,
+            uvStatus: hasData ? (ud?.string(forKey: "uv_status") ?? "Low") : "Open app",
+            burnTime: hasData ? (ud?.string(forKey: "burn_time") ?? "0 mins") : "--",
+            timerRunning: false,
+            timerEndTime: nil,
+            timerProgressPercent: 0,
+            sessionsText: "0/0",
+            protectionStatus: hasData ? (ud?.string(forKey: "protection_status") ?? "Not Applied") : "Open app"
         )
     }
 }
