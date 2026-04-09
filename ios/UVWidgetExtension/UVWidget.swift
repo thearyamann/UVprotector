@@ -339,16 +339,25 @@ struct UVWidgetProvider: TimelineProvider {
         
         let uvIndex = ud?.integer(forKey: "uv_index") ?? 0
         let hasData = uvIndex > 0 || (ud?.string(forKey: "uv_status") ?? "").isEmpty == false
+        let sessionsText = ud?.string(forKey: "sessions_text") ?? "0/0"
+        let timerProgressPercent = ud?.integer(forKey: "timer_progress_percent") ?? 0
+
+        let timerEndMs = (ud?.object(forKey: "timer_end_time") as? NSNumber)?.int64Value ?? 0
+        let timerEndTime: Date? = timerEndMs > 0
+            ? Date(timeIntervalSince1970: TimeInterval(timerEndMs) / 1000.0)
+            : nil
+        let rawTimerRunning = ud?.bool(forKey: "timer_running") ?? false
+        let timerRunning = rawTimerRunning && (timerEndTime?.timeIntervalSinceNow ?? -1) > 0
 
         return UVWidgetEntry(
             date: Date(),
             uvIndex: uvIndex,
             uvStatus: hasData ? (ud?.string(forKey: "uv_status") ?? "Low") : "Open app",
             burnTime: hasData ? (ud?.string(forKey: "burn_time") ?? "0 mins") : "--",
-            timerRunning: false,
-            timerEndTime: nil,
-            timerProgressPercent: 0,
-            sessionsText: "0/0",
+            timerRunning: hasData ? timerRunning : false,
+            timerEndTime: hasData ? timerEndTime : nil,
+            timerProgressPercent: hasData ? timerProgressPercent : 0,
+            sessionsText: hasData ? sessionsText : "0/0",
             protectionStatus: hasData ? (ud?.string(forKey: "protection_status") ?? "Not Applied") : "Open app"
         )
     }
