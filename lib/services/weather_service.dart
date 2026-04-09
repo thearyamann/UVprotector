@@ -47,23 +47,19 @@ class WeatherService {
     required String cityName,
   }) async {
     try {
-      print(
-        '[UV] WeatherService: trying Satellite Radiation API (most accurate)...',
-      );
-      final result = await _fetchSatelliteRadiationUV(
+      print('[UV] WeatherService: trying Open-Meteo UV Index API...');
+      final result = await _fetchUVIndexFromAPI(
         latitude: latitude,
         longitude: longitude,
         cityName: cityName,
       );
-      print(
-        '[UV] WeatherService: Satellite Radiation SUCCESS - UV is satellite-accurate',
-      );
+      print('[UV] WeatherService: UV Index API SUCCESS');
       return result;
     } catch (e, st) {
-      print('[UV] WeatherService: Satellite Radiation FAILED – $e');
+      print('[UV] WeatherService: UV Index API FAILED – $e');
       AppLogger.logServiceError(
         'WeatherService',
-        'fetchWeatherAndPeak.satellite',
+        'fetchWeatherAndPeak.uvIndex',
         e,
         st,
       );
@@ -136,7 +132,83 @@ class WeatherService {
   static Future<
     ({WeatherData weather, String peakStart, String peakEnd, double currentUV})
   >
-  _fetchSatelliteRadiationUV({
+  _fetchUVIndexFromAPI({
+    required double latitude,
+    required double longitude,
+    required String cityName,
+  }) async {
+    final now = DateTime.now();
+
+    final url = Uri.parse(
+      'https://api.open-meteo.com/v1/forecast'
+      '?latitude=$latitude&longitude=$longitude'
+      '&hourly=uv_index'
+      '&current=uv_index'
+      '&timezone=auto'
+      '&forecast_days=2',
+    );
+
+    final response = await _getWithRetry(
+      url,
+      timeoutSeconds: 20,
+      maxAttempts: 2,
+    );
+
+    if (response.statusCode != 200) {
+      throw WeatherException(
+        'UV Index API failed with status: ${response.statusCode}',
+        statusCode: response.statusCode,
+        cause: response.body,
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    final current = data['current'] as Map<String, dynamic>?;
+    final hourly = data['hourly'] as Map<String, dynamic>?;
+
+    if (hourly == null) {
+      throw const WeatherException('UV Index response missing hourly data');
+    }
+
+    final currentUV = (current?['uv_index'] as num?)?.toDouble() ?? 0.0;
+    final times = (hourly['time'] as List).cast<String>();
+    final uvList = (hourly['uv_index'] as List);
+
+    double maxUV = 0.0;
+    int? peakStartHour;
+    int? peakEndHour;
+
+    for (int i = 0; i < times.length; i++) {
+      final time = DateTime.parse(times[i]);
+      if (time.day != now.day) continue;
+
+      final uv = (uvList[i] as num?)?.toDouble() ?? 0.0;
+
+      if (uv > maxUV) maxUV = uv;
+
+      if (uv > maxUV * 0.8 && uv > 0.5) {
+        peakStartHour ??= time.hour;
+        peakEndHour = time.hour;
+      }
+    }
+
+    final weatherResult = await _fetchWeatherOnly(
+      latitude: latitude,
+      longitude: longitude,
+      cityName: cityName,
+    );
+
+    return (
+      weather: weatherResult,
+      peakStart: peakStartHour != null
+          ? _formatHour12(peakStartHour)
+          : '12:00 PM',
+      peakEnd: peakEndHour != null ? _formatHour12(peakEndHour + 1) : '3:00 PM',
+      currentUV: currentUV,
+    );
+  }
+
+  static _fetchSatelliteRadiationUV({
     required double latitude,
     required double longitude,
     required String cityName,
