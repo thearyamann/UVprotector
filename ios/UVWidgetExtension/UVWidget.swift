@@ -346,8 +346,7 @@ struct UVWidgetProvider: TimelineProvider {
         let timerEndTime: Date? = timerEndMs > 0
             ? Date(timeIntervalSince1970: TimeInterval(timerEndMs) / 1000.0)
             : nil
-        let rawTimerRunning = ud?.bool(forKey: "timer_running") ?? false
-        let timerRunning = rawTimerRunning && (timerEndTime?.timeIntervalSinceNow ?? -1) > 0
+        let timerRunning = ud?.bool(forKey: "timer_running") ?? false
 
         return UVWidgetEntry(
             date: Date(),

@@ -24,9 +24,22 @@ import BackgroundTasks
       BGTaskScheduler.shared.register(forTaskWithIdentifier: "uv_refresh_task_ios", using: nil) { task in
         self.handleAppRefresh(task: task as! BGAppRefreshTask)
       }
+      scheduleAppRefresh()
     }
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+  
+  @available(iOS 13.0, *)
+  private func scheduleAppRefresh() {
+    let request = BGAppRefreshTaskRequest(identifier: "uv_refresh_task_ios")
+    request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60)
+    do {
+      try BGTaskScheduler.shared.submit(request)
+      print("[AppDelegate] BGAppRefreshTask scheduled successfully")
+    } catch {
+      print("[AppDelegate] Could not schedule BGAppRefreshTask: \(error.localizedDescription)")
+    }
   }
   
   @available(iOS 13.0, *)
@@ -34,6 +47,8 @@ import BackgroundTasks
     task.expirationHandler = {
       task.setTaskCompleted(success: false)
     }
+    
+    scheduleAppRefresh()
     
     task.setTaskCompleted(success: true)
   }

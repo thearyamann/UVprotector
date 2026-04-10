@@ -23,6 +23,7 @@ class WidgetService {
       await HomeWidget.saveWidgetData<String>('sessions_text', '0/0');
       await HomeWidget.saveWidgetData<String>('protection_status', 'Open app');
       await HomeWidget.saveWidgetData<int>('timer_end_time', 0);
+      await HomeWidget.saveWidgetData<bool>('isOutdoor', true);
 
       await HomeWidget.updateWidget(
         iOSName: _iosWidgetName,
@@ -47,8 +48,10 @@ class WidgetService {
       int timerProgressPercent = 0;
       int sessionsCompleted = 0;
       int sessionsTotal = 0;
+      bool isOutdoor = true;
+      bool hasSession = session != null;
 
-      if (session != null) {
+      if (hasSession) {
         sessionsCompleted = session['sessionsCompleted'] as int? ?? 0;
         sessionsTotal =
             session['lockedTotalSessions'] as int? ??
@@ -59,7 +62,7 @@ class WidgetService {
             session['lockedReapplyMinutes'] as int? ??
             session['reapplyMinutes'] as int? ??
             0;
-        final isOutdoor = session['isOutdoor'] as bool? ?? true;
+        isOutdoor = session['isOutdoor'] as bool? ?? true;
         final remainingOutdoorSeconds =
             (session['remainingOutdoorSeconds'] as num?)?.toDouble();
 
@@ -68,8 +71,17 @@ class WidgetService {
           final totalSeconds = reapplyMins * 60.0 / rate;
 
           double secondsLeft;
-          if (remainingOutdoorSeconds != null) {
-            secondsLeft = remainingOutdoorSeconds / rate;
+          if (remainingOutdoorSeconds != null && remainingOutdoorSeconds > 0) {
+            final sessionStartedAt =
+                session['sessionStartedAt'] as int? ?? lastApplied;
+            final elapsedSec = DateTime.now()
+                .difference(
+                  DateTime.fromMillisecondsSinceEpoch(sessionStartedAt),
+                )
+                .inSeconds
+                .toDouble();
+            double remaining = remainingOutdoorSeconds - (elapsedSec * rate);
+            secondsLeft = remaining.clamp(0.0, totalSeconds);
           } else {
             final endMs = lastApplied + (reapplyMins * 60 * 1000);
             final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -117,6 +129,7 @@ class WidgetService {
         timerProgressPercent: timerProgressPercent,
         sessionsText: sessionsText,
         protectionStatus: protectionStatus,
+        isOutdoor: isOutdoor,
       );
     } catch (e, st) {
       AppLogger.logServiceError('WidgetService', 'updateFromCache', e, st);
@@ -148,6 +161,7 @@ class WidgetService {
     required int timerProgressPercent,
     required String sessionsText,
     required String protectionStatus,
+    required bool isOutdoor,
   }) async {
     try {
       if (Platform.isIOS) {
@@ -167,6 +181,7 @@ class WidgetService {
         'protection_status',
         protectionStatus,
       );
+      await HomeWidget.saveWidgetData<bool>('isOutdoor', isOutdoor);
 
       if (timerEndTime != null) {
         await HomeWidget.saveWidgetData<int>(

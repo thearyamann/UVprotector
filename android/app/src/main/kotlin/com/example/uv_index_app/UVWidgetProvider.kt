@@ -52,6 +52,7 @@ open class UVWidgetProvider : HomeWidgetProvider() {
         val timerProgressPercent = widgetData.getInt("timer_progress_percent", 0)
         val sessionsText = widgetData.getString("sessions_text", "0/0") ?: "0/0"
         val protectionStatus = widgetData.getString("protection_status", "Not Applied") ?: "Not Applied"
+        val isOutdoor = widgetData.getBoolean("isOutdoor", true)
         val isLow = uvIndex <= 2
 
         val sessionsParts = sessionsText.split("/")
