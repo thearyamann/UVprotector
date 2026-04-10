@@ -17,7 +17,7 @@
 <img src="https://img.shields.io/badge/Version-1.0.0-000000?style=for-the-badge" />
 </p>
 
-<a href="https://github.com/aryamanchaudhary/uvguard/releases/latest">
+<a href="https://github.com/thearyamann/UVGuard/releases/tag/v1.0.0">
 <img src="https://img.shields.io/badge/%E2%AC%87%20Download%20Android%20APK-Latest%20Release-000000?style=for-the-badge&logo=android&logoColor=white" />
 </a>
 
